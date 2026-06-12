@@ -1,0 +1,35 @@
+name: frontend
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install
+      - run: bun run check
+      - run: bun run build
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"
+
+  deploy:
+    needs: build
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Render deploy (frontend)
+        run: |
+          HOOK="${{ secrets.RENDER_FRONTEND_DEPLOY_HOOK_URL }}"
+          if [ -z "$HOOK" ]; then
+            echo "RENDER_FRONTEND_DEPLOY_HOOK_URL not set — skipping deploy."
+            exit 0
+          fi
+          curl -fsSL "$HOOK" || echo "Deploy hook call failed — continuing without failing the job."

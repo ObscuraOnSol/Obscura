@@ -1,0 +1,36 @@
+# --- Obscura local/dev artifacts (pre-existing) ---
+skills-lock.json
+/technical-docs
+/inspo
+
+# --- Agent tooling (local, not product) ---
+.agents/
+.claude/
+
+# --- Env / secrets ---
+.env
+.env.local
+.env.*.local
+backend/.env
+*.pem
+*.key
+
+# --- Node / Bun ---
+node_modules/
+bun.lockb
+.next/
+out/
+dist/
+build/
+
+# --- Anchor / Solana contract ---
+contract/target/
+contract/.anchor/
+contract/test-ledger/
+**/*.rs.bk
+
+# --- Misc ---
+.DS_Store
+.vercel
+coverage/
+*.tsbuildinfo

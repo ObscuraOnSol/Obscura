@@ -1,0 +1,532 @@
+import Link from "next/link";
+import Image from "next/image";
+import {
+  ArrowRight,
+  Lock,
+  Boxes,
+  ShieldCheck,
+  Bot,
+  Activity,
+  EyeOff,
+  ExternalLink,
+} from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import { Wordmark } from "@/components/logo";
+import { SiteHeader } from "@/components/site-header";
+import { ClickEffects } from "@/components/click-effects";
+import {
+  FadeIn,
+  StaggerContainer,
+  StaggerItem,
+  ScaleIn,
+  HeroStagger,
+  HeroItem,
+  ParallaxText,
+} from "@/components/motion";
+import { TextScramble } from "@/components/text-scramble";
+import { cn, fmtUsdHr } from "@/lib/utils";
+
+/* ---------- Data ---------- */
+
+const CLEARING = [
+  { gpu: "H100 80GB", price: 1.8642, delta: -3.1 },
+  { gpu: "A100 80GB", price: 0.9421, delta: -1.4 },
+  { gpu: "RTX 4090", price: 0.3187, delta: +2.2 },
+  { gpu: "L40S", price: 0.6755, delta: -0.6 },
+];
+
+const PHASES = [
+  { key: "COMMIT", label: "Committed", note: "Order hashed client-side — nothing visible on-chain." },
+  { key: "REVEAL", label: "Revealed", note: "Price and quantity enter the next batch auction." },
+  { key: "MATCH", label: "Matched", note: "ZK-verified batch auction clears in ~45 seconds." },
+  { key: "SETTLE", label: "Settled", note: "USDC released from escrow to counterparties." },
+];
+
+const FEATURES = [
+  {
+    icon: Lock,
+    title: "Commit–reveal orders",
+    body: "Orders are hashed before submission. Size, price, and timing never hit the public mempool — no front-running your compute buys.",
+  },
+  {
+    icon: Boxes,
+    title: "ZK-matched batch auctions",
+    body: "A scheduled ~45s batch auction clears a single price. Matching happens under proof; order details are never exposed during matching.",
+  },
+  {
+    icon: ShieldCheck,
+    title: "Screened settlement",
+    body: "Every external exit carries a clean-provenance association-set proof. Privacy without naked wallet layering — a microstructure tool, not an obfuscator.",
+  },
+  {
+    icon: Bot,
+    title: "Agent-native API",
+    body: "Token-gated programmatic access via SAS passports. Agents submit, list, and cancel orders with an X-API-Key. No KYC — wallet is identity.",
+  },
+];
+
+const FOOTER_LINKS = {
+  product: [
+    ["Marketplace", "/marketplace"],
+    ["Orders", "/orders"],
+    ["Dashboard", "/dashboard"],
+    ["Agent API", "/agent"],
+  ],
+  community: [
+    ["Telegram", "https://t.me/obscurasol", true],
+    ["X (Twitter)", "https://x.com/obscurasol", true],
+    ["GitHub", "https://github.com/ObscuraOnSol", true],
+  ],
+  resources: [
+    ["Whitepaper", "#", true],
+    ["Roadmap", "#", true],
+    ["Documentation", "#", true],
+  ],
+} as const;
+
+/* ---------- Page ---------- */
+
+export default function Home() {
+  return (
+    <div className="relative min-h-screen overflow-x-clip bg-background">
+      <ClickEffects />
+      {/* Hero background image covering header + hero */}
+      <div className="absolute left-0 right-0 top-0 h-[800px] overflow-hidden pointer-events-none z-0">
+        <Image
+          src="/hero.jpg"
+          alt=""
+          fill
+          className="object-cover opacity-30"
+          priority
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-background/10 via-background/65 to-background" />
+      </div>
+
+      <div className="relative z-10">
+        <SiteHeader />
+        <Hero />
+        <Ticker />
+        <PhaseStrip />
+        <ClearingPrices />
+        <Features />
+        <Flywheel />
+        <CTA />
+        <SiteFooter />
+      </div>
+    </div>
+  );
+}
+
+
+
+/* ---------- Hero ---------- */
+
+function Hero() {
+  return (
+    <section className="relative overflow-hidden">
+      <div className="container relative flex flex-col items-center pb-24 pt-28 text-center md:pt-36">
+        <HeroStagger className="flex flex-col items-center">
+          <HeroItem>
+            <h1 className="max-w-4xl text-5xl font-bold leading-[1.05] tracking-tight sm:text-6xl md:text-7xl lg:text-8xl">
+              Compute
+              <br />
+              <TextScramble text="in the dark." className="text-primary" />
+            </h1>
+          </HeroItem>
+
+          <HeroItem>
+            <p className="mt-7 max-w-xl text-balance text-base leading-relaxed text-muted-foreground md:text-lg">
+              A dark pool for GPU compute on Solana. Encrypted order books,
+              commit-reveal submission, ZK-matched batch auctions, USDC-settled.
+              No&nbsp;one sees what you buy, what you pay, or when.
+            </p>
+          </HeroItem>
+
+          <HeroItem>
+            <div className="mt-10 flex flex-col items-center gap-3 sm:flex-row">
+              <Link href="/dashboard">
+                <Button size="lg">
+                  Launch app
+                  <ArrowRight className="ml-1.5 h-4 w-4" />
+                </Button>
+              </Link>
+              <Link href="/marketplace">
+                <Button size="lg" variant="outline">
+                  View live prices
+                </Button>
+              </Link>
+            </div>
+          </HeroItem>
+
+          <HeroItem>
+            <p className="data mt-8 text-xs text-muted-foreground/60">
+              No wallet required to browse · USDC-settled from day one
+            </p>
+          </HeroItem>
+        </HeroStagger>
+      </div>
+    </section>
+  );
+}
+
+/* ---------- Ticker ---------- */
+
+function Ticker() {
+  const row = [...CLEARING, ...CLEARING, ...CLEARING, ...CLEARING];
+  return (
+    <div className="border-y border-border/60 bg-card/30 overflow-hidden">
+      <div className="flex animate-marquee items-center gap-10 whitespace-nowrap py-3">
+        {row.map((c, i) => (
+          <span key={i} className="data inline-flex items-center gap-3 text-xs text-muted-foreground">
+            {i % CLEARING.length === 0 && (
+              <span className="data flex items-center gap-1.5 text-[11px] uppercase tracking-[0.2em] text-primary">
+                <Activity className="h-3 w-3" />
+                Live
+              </span>
+            )}
+            <span className="text-foreground">{c.gpu}</span>{" "}
+            {fmtUsdHr(c.price)}{" "}
+            <span className={c.delta < 0 ? "text-primary" : "text-destructive"}>
+              {c.delta > 0 ? "+" : ""}
+              {c.delta}%
+            </span>
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ---------- Phase Strip ---------- */
+
+function PhaseStrip() {
+  return (
+    <section className="container py-24">
+      <FadeIn>
+        <SectionHeading
+          eyebrow="The order lifecycle"
+          title="Every order makes its phase explicit"
+          sub="The UI always shows whether an order is committed, revealed, matched, or settled — so you know exactly what is, and isn't, yet public."
+        />
+      </FadeIn>
+      <StaggerContainer className="mt-14 grid gap-4 sm:grid-cols-2 lg:grid-cols-4" staggerDelay={0.08}>
+        {PHASES.map((p, i) => (
+          <StaggerItem key={p.key}>
+            <div className="group relative h-full overflow-hidden rounded-xl border border-border bg-card/40 p-6 transition-colors hover:border-primary/30">
+              <div className="data text-[11px] uppercase tracking-[0.2em] text-primary">
+                0{i + 1} / {p.key}
+              </div>
+              <div className="mt-3 text-xl font-semibold">{p.label}</div>
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{p.note}</p>
+              <div className="pointer-events-none absolute inset-x-0 -bottom-px h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
+            </div>
+          </StaggerItem>
+        ))}
+      </StaggerContainer>
+    </section>
+  );
+}
+
+/* ---------- Clearing Prices ---------- */
+
+function ClearingPrices() {
+  return (
+    <section className="container py-24">
+      <FadeIn>
+        <SectionHeading
+          eyebrow="Real-time price discovery"
+          title="Live GPU clearing prices"
+          sub="A clearing-price oracle for H100, A100, RTX 4090 and newer parts — peer-to-peer auction pricing, materially cheaper than hyperscalers."
+        />
+      </FadeIn>
+      <StaggerContainer className="mt-14 grid gap-px overflow-hidden rounded-xl border border-border bg-border sm:grid-cols-2 lg:grid-cols-4" staggerDelay={0.06}>
+        {CLEARING.map((c) => (
+          <StaggerItem key={c.gpu}>
+            <div className="bg-card p-6">
+              <div className="text-xs uppercase tracking-wider text-muted-foreground">
+                {c.gpu}
+              </div>
+              <div className="data mt-3 text-3xl font-bold text-foreground">
+                {fmtUsdHr(c.price)}
+              </div>
+              <div
+                className={cn(
+                  "data mt-1.5 text-sm",
+                  c.delta < 0 ? "text-primary" : "text-destructive",
+                )}
+              >
+                {c.delta > 0 ? "▲" : "▼"} {Math.abs(c.delta)}% · 24h
+              </div>
+            </div>
+          </StaggerItem>
+        ))}
+      </StaggerContainer>
+      <FadeIn delay={0.3}>
+        <p className="data mt-4 text-center text-xs text-muted-foreground/50">
+          Indicative figures · production data from GET /api/market/prices
+        </p>
+      </FadeIn>
+    </section>
+  );
+}
+
+/* ---------- Features ---------- */
+
+function Features() {
+  return (
+    <section className="container py-24">
+      <FadeIn>
+        <SectionHeading
+          eyebrow="Why Obscura"
+          title="Dark-pool mechanics, rebuilt on Solana"
+          sub="Fully on-chain, privacy-preserving by default, AI-agent-native. The legitimate market-microstructure approach — never an obfuscation service."
+        />
+      </FadeIn>
+      <StaggerContainer className="mt-14 grid gap-4 md:grid-cols-2" staggerDelay={0.1}>
+        {FEATURES.map((f) => (
+          <StaggerItem key={f.title}>
+            <div className="group flex h-full gap-5 rounded-xl border border-border bg-card/40 p-6 transition-all hover:border-primary/30 hover:bg-card/60">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-primary/20 bg-primary/5 text-primary transition-colors group-hover:bg-primary/10">
+                <f.icon className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold">{f.title}</h3>
+                <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
+                  {f.body}
+                </p>
+              </div>
+            </div>
+          </StaggerItem>
+        ))}
+      </StaggerContainer>
+    </section>
+  );
+}
+
+/* ---------- Flywheel ---------- */
+
+function Flywheel() {
+  const steps = [
+    "Protocol earns fees",
+    "Buys back & burns $OBSC",
+    "Pays USDC yield to stakers",
+    "Node operators lock $OBSC",
+    "Agents auto-buy for API access",
+    "More compute → more fees",
+  ];
+  return (
+    <section className="container py-24">
+      <ScaleIn>
+        <div className="overflow-hidden rounded-2xl border border-border bg-card/40">
+          <div className="grid-hairlines p-8 md:p-12">
+            <SectionHeading
+              eyebrow="$OBSC token"
+              title="A flywheel, not a faucet"
+              sub="20% of protocol fees buy back and burn $OBSC. Stakers earn real USDC yield. Node operators stake as collateral, slashable for dishonesty."
+              align="left"
+            />
+            <StaggerContainer className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-3" staggerDelay={0.06}>
+              {steps.map((s, i) => (
+                <StaggerItem key={s}>
+                  <li className="flex items-center gap-3 rounded-lg border border-border bg-background/50 px-4 py-3 transition-colors hover:border-primary/20">
+                    <span className="data text-xs text-primary">0{i + 1}</span>
+                    <span className="text-sm">{s}</span>
+                  </li>
+                </StaggerItem>
+              ))}
+            </StaggerContainer>
+          </div>
+        </div>
+      </ScaleIn>
+    </section>
+  );
+}
+
+/* ---------- CTA ---------- */
+
+function CTA() {
+  return (
+    <section className="container py-24">
+      <ScaleIn>
+        <div className="relative overflow-hidden rounded-2xl">
+          {/* CTA background image */}
+          <div className="absolute inset-0">
+            <Image
+              src="/cta-bg.jpg"
+              alt=""
+              fill
+              className="object-cover opacity-40"
+            />
+            <div className="absolute inset-0 bg-background/60" />
+          </div>
+          <div className="relative px-8 py-20 text-center md:py-24">
+            <FadeIn>
+              <EyeOff className="mx-auto h-8 w-8 text-primary" />
+            </FadeIn>
+            <FadeIn delay={0.1}>
+              <h2 className="mt-6 text-4xl font-bold tracking-tight md:text-5xl">
+                Buy compute. <span className="text-primary">Leave no trace.</span>
+              </h2>
+            </FadeIn>
+            <FadeIn delay={0.2}>
+              <p className="mx-auto mt-5 max-w-md text-muted-foreground">
+                Sign in with Solana, commit your first order, and watch it clear in
+                the next batch.
+              </p>
+            </FadeIn>
+            <FadeIn delay={0.3}>
+              <div className="mt-8 flex justify-center">
+                <Link href="/dashboard">
+                  <Button size="lg">
+                    Launch app
+                    <ArrowRight className="ml-1.5 h-4 w-4" />
+                  </Button>
+                </Link>
+              </div>
+            </FadeIn>
+          </div>
+        </div>
+      </ScaleIn>
+    </section>
+  );
+}
+
+/* ---------- Footer ---------- */
+
+function SiteFooter() {
+  return (
+    <footer className="relative overflow-hidden border-t border-border">
+      {/* Giant OBSCURA background text */}
+      <ParallaxText
+        className="pointer-events-none absolute inset-0 flex items-center justify-center select-none"
+      >
+        <span
+          className="whitespace-nowrap text-[12rem] font-bold uppercase leading-none tracking-tight text-foreground/[0.03] sm:text-[16rem] md:text-[20rem] lg:text-[26rem]"
+          aria-hidden="true"
+        >
+          OBSCURA
+        </span>
+      </ParallaxText>
+
+      <div className="container relative py-16 md:py-20">
+        <StaggerContainer className="grid gap-12 md:grid-cols-12" staggerDelay={0.08}>
+          {/* Brand column */}
+          <StaggerItem className="md:col-span-4">
+            <Wordmark />
+            <p className="mt-4 max-w-xs text-sm leading-relaxed text-muted-foreground">
+              A dark pool for GPU compute on Solana. Encrypted order books,
+              batch auctions, USDC-settled.
+            </p>
+          </StaggerItem>
+
+          {/* Product links */}
+          <StaggerItem className="md:col-span-2">
+            <h4 className="data text-[11px] uppercase tracking-[0.2em] text-muted-foreground/70">
+              Product
+            </h4>
+            <ul className="mt-4 space-y-3">
+              {FOOTER_LINKS.product.map(([label, href]) => (
+                <li key={label}>
+                  <Link
+                    href={href}
+                    className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    {label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </StaggerItem>
+
+          {/* Community links */}
+          <StaggerItem className="md:col-span-3">
+            <h4 className="data text-[11px] uppercase tracking-[0.2em] text-muted-foreground/70">
+              Community
+            </h4>
+            <ul className="mt-4 space-y-3">
+              {FOOTER_LINKS.community.map(([label, href]) => (
+                <li key={label}>
+                  <a
+                    href={href as string}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    {label}
+                    <ExternalLink className="h-3 w-3 opacity-40" />
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </StaggerItem>
+
+          {/* Resources links */}
+          <StaggerItem className="md:col-span-3">
+            <h4 className="data text-[11px] uppercase tracking-[0.2em] text-muted-foreground/70">
+              Resources
+            </h4>
+            <ul className="mt-4 space-y-3">
+              {FOOTER_LINKS.resources.map(([label, href]) => (
+                <li key={label}>
+                  <a
+                    href={href as string}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    {label}
+                    <ExternalLink className="h-3 w-3 opacity-40" />
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </StaggerItem>
+        </StaggerContainer>
+
+        {/* Bottom bar */}
+        <FadeIn delay={0.4}>
+          <div className="mt-16 flex flex-col items-center justify-between gap-4 border-t border-border pt-8 md:flex-row">
+            <p className="data text-xs text-muted-foreground/50">
+              © {new Date().getFullYear()} Obscura. Compute in the dark.
+            </p>
+            <p className="data text-xs text-muted-foreground/40">
+              Pseudonymous · No KYC · USDC-settled
+            </p>
+          </div>
+        </FadeIn>
+      </div>
+    </footer>
+  );
+}
+
+/* ---------- Section Heading ---------- */
+
+function SectionHeading({
+  eyebrow,
+  title,
+  sub,
+  align = "center",
+}: {
+  eyebrow: string;
+  title: string;
+  sub: string;
+  align?: "center" | "left";
+}) {
+  return (
+    <div
+      className={cn(
+        "max-w-2xl",
+        align === "center" ? "mx-auto text-center" : "text-left",
+      )}
+    >
+      <div className="data text-[11px] uppercase tracking-[0.22em] text-primary">
+        {eyebrow}
+      </div>
+      <h2 className="mt-3 text-3xl font-bold tracking-tight md:text-4xl">
+        {title}
+      </h2>
+      <p className="mt-4 text-muted-foreground">{sub}</p>
+    </div>
+  );
+}

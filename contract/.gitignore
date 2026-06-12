@@ -1,0 +1,8 @@
+target/
+.anchor/
+test-ledger/
+node_modules/
+**/*.rs.bk
+.DS_Store
+keypairs/
+*.json.key

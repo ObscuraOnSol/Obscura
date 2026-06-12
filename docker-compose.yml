@@ -1,0 +1,23 @@
+# Local dev infrastructure for the Obscura backend.
+# Usage: docker compose up -d  (then `cd backend && bun run dev`)
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: obscura-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: obscura
+      POSTGRES_PASSWORD: obscura
+      POSTGRES_DB: obscura
+    ports:
+      - "5432:5432"
+    volumes:
+      - obscura_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U obscura"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  obscura_pgdata:
