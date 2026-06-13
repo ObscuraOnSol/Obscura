@@ -3,6 +3,7 @@ import "dotenv/config";
 import { app } from "./app.ts";
 import { env } from "./lib/env.ts";
 import { migrate } from "./db/migrate.ts";
+import { startMatchingEngine } from "./services/matching.ts";
 
 async function main() {
   if (env.databaseUrl) {
@@ -18,6 +19,9 @@ async function main() {
       `[startup] Obscura backend listening on :${env.port} (${env.nodeEnv}) — batch interval ${env.matchingIntervalSeconds}s`,
     );
   });
+
+  // The matching engine runs the batch auction on an interval.
+  if (env.databaseUrl) startMatchingEngine();
 }
 
 main().catch((err) => {

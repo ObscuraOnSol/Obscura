@@ -10,6 +10,7 @@
     "check": "tsc --noEmit",
     "migrate": "bun run src/db/migrate-cli.ts",
     "seed": "bun run src/db/seed-cli.ts",
+    "batch": "bun run src/db/run-batch-cli.ts",
     "test": "bun test"
   },
   "dependencies": {

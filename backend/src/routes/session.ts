@@ -74,9 +74,14 @@ sessionRouter.post(
     }
     const { wallet: w, priceMicro, qty, secret } = parsed.data;
 
-    const { rows } = await query<{ commit_hash: string; status: string }>(
-      `SELECT commit_hash, status FROM orders WHERE id = $1 AND wallet = $2`,
-      [String(req.params.id), w],
+    const id = String(req.params.id);
+    const { rows } = await query<{
+      commit_hash: string;
+      status: string;
+      gpu_type: string;
+    }>(
+      `SELECT commit_hash, status, gpu_type FROM orders WHERE id = $1 AND wallet = $2`,
+      [id, w],
     );
     if (rows.length === 0) {
       res.status(404).json({ error: "order not found" });
@@ -94,12 +99,21 @@ sessionRouter.post(
       return;
     }
 
-    // Mark revealed. price/qty are intentionally NOT stored.
+    // Mark revealed and record an EPHEMERAL matching intent. price/qty live in
+    // order_intents only for the batch window; the matching engine deletes them
+    // on settlement, so they never persist in a public-safe table.
     await query(
       `UPDATE orders SET revealed = TRUE, status = 'revealed' WHERE id = $1 AND wallet = $2`,
-      [String(req.params.id), w],
+      [id, w],
     );
-    res.json({ id: String(req.params.id), status: "revealed", phase: "REVEALED" });
+    await query(
+      `INSERT INTO order_intents (order_id, wallet, gpu_type, price_micro, qty)
+       VALUES ($1, $2, $3, $4, $5)
+       ON CONFLICT (order_id) DO UPDATE
+         SET price_micro = EXCLUDED.price_micro, qty = EXCLUDED.qty`,
+      [id, w, rows[0].gpu_type, priceMicro, qty],
+    );
+    res.json({ id, status: "revealed", phase: "REVEALED" });
   }),
 );
 
