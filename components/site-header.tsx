@@ -2,20 +2,24 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ArrowRight, Menu, X } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 
 import { Button } from "@/components/ui/button";
 import { Wordmark } from "@/components/logo";
-import { useWallet } from "@/lib/wallet";
-import { useSession } from "@/lib/session";
-import { shortHash } from "@/lib/utils";
 
-
-export function SiteHeader() {
+export function SiteHeader({ onComingSoonClick }: { onComingSoonClick?: () => void }) {
   const [isOpen, setIsOpen] = useState(false);
-  const { wallet, connect, disconnect, connecting } = useWallet();
-  const { signedIn, signingIn, signIn, signOut } = useSession();
+  const router = useRouter();
+
+  const handleComingSoonClick = () => {
+    if (onComingSoonClick) {
+      onComingSoonClick();
+    } else {
+      router.push("/?comingsoon=true");
+    }
+  };
 
   const nav = [
     ["Marketplace", "/marketplace"],
@@ -34,50 +38,37 @@ export function SiteHeader() {
             <Wordmark />
           </Link>
           <nav className="hidden items-center gap-8 md:flex">
-            {nav.map(([label, href]) => (
-              <Link
-                key={label}
-                href={href}
-                className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-              >
-                {label}
-              </Link>
-            ))}
+            {nav.map(([label, href]) => {
+              const isAppPage = ["/marketplace", "/orders", "/agent"].includes(href);
+              if (isAppPage) {
+                return (
+                  <button
+                    key={label}
+                    onClick={handleComingSoonClick}
+                    className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    {label}
+                  </button>
+                );
+              }
+              return (
+                <Link
+                  key={label}
+                  href={href}
+                  className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  {label}
+                </Link>
+              );
+            })}
           </nav>
           <div className="flex items-center gap-3">
-            {/* Desktop Auth */}
+            {/* Desktop Launch App replaced with Coming soon (No Sign In) */}
             <div className="hidden items-center gap-3 md:flex">
-              {!wallet ? (
-                <Button variant="ghost" size="sm" onClick={connect} disabled={connecting}>
-                  {connecting ? "Connecting..." : "Sign in"}
-                </Button>
-              ) : !signedIn ? (
-                <Button variant="ghost" size="sm" onClick={() => void signIn()} disabled={signingIn}>
-                  {signingIn ? "Checking..." : "Sign in"}
-                </Button>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <Link href="/dashboard">
-                    <Button variant="ghost" size="sm" className="font-mono text-xs">
-                      {shortHash(wallet, 4, 4)}
-                    </Button>
-                  </Link>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-xs text-muted-foreground hover:text-foreground"
-                    onClick={() => void signOut()}
-                  >
-                    Disconnect
-                  </Button>
-                </div>
-              )}
-              <Link href="/dashboard">
-                <Button size="sm" variant="white">
-                  Launch app
-                  <ArrowRight className="ml-1 h-3.5 w-3.5" />
-                </Button>
-              </Link>
+              <Button size="sm" variant="white" onClick={handleComingSoonClick}>
+                Coming soon
+                <ArrowRight className="ml-1 h-3.5 w-3.5" />
+              </Button>
             </div>
 
             {/* Mobile Hamburger Button */}
@@ -123,52 +114,47 @@ export function SiteHeader() {
               </div>
 
               <nav className="mt-12 flex flex-col gap-6">
-                {nav.map(([label, href]) => (
-                  <Link
-                    key={label}
-                    href={href}
-                    onClick={() => setIsOpen(false)}
-                    className="text-lg font-medium text-muted-foreground transition-colors hover:text-foreground"
-                  >
-                    {label}
-                  </Link>
-                ))}
+                {nav.map(([label, href]) => {
+                  const isAppPage = ["/marketplace", "/orders", "/agent"].includes(href);
+                  if (isAppPage) {
+                    return (
+                      <button
+                        key={label}
+                        onClick={() => {
+                          setIsOpen(false);
+                          handleComingSoonClick();
+                        }}
+                        className="text-left text-lg font-medium text-muted-foreground transition-colors hover:text-foreground"
+                      >
+                        {label}
+                      </button>
+                    );
+                  }
+                  return (
+                    <Link
+                      key={label}
+                      href={href}
+                      onClick={() => setIsOpen(false)}
+                      className="text-lg font-medium text-muted-foreground transition-colors hover:text-foreground"
+                    >
+                      {label}
+                    </Link>
+                  );
+                })}
               </nav>
 
               <div className="mt-auto flex flex-col gap-3">
-                {!wallet ? (
-                  <Button variant="outline" className="w-full" onClick={connect} disabled={connecting}>
-                    {connecting ? "Connecting..." : "Sign in"}
-                  </Button>
-                ) : !signedIn ? (
-                  <Button variant="outline" className="w-full" onClick={() => void signIn()} disabled={signingIn}>
-                    {signingIn ? "Checking..." : "Sign in"}
-                  </Button>
-                ) : (
-                  <div className="flex flex-col gap-2 w-full">
-                    <Link href="/dashboard" className="w-full" onClick={() => setIsOpen(false)}>
-                      <Button variant="outline" className="w-full font-mono text-sm">
-                        {shortHash(wallet, 4, 4)}
-                      </Button>
-                    </Link>
-                    <Button
-                      variant="ghost"
-                      className="w-full text-muted-foreground text-sm"
-                      onClick={() => {
-                        void signOut();
-                        setIsOpen(false);
-                      }}
-                    >
-                      Disconnect
-                    </Button>
-                  </div>
-                )}
-                <Link href="/dashboard" onClick={() => setIsOpen(false)}>
-                  <Button className="w-full" variant="white">
-                    Launch app
-                    <ArrowRight className="ml-1 h-3.5 w-3.5" />
-                  </Button>
-                </Link>
+                <Button
+                  className="w-full"
+                  variant="white"
+                  onClick={() => {
+                    setIsOpen(false);
+                    handleComingSoonClick();
+                  }}
+                >
+                  Coming soon
+                  <ArrowRight className="ml-1 h-3.5 w-3.5" />
+                </Button>
               </div>
             </motion.div>
           </>

@@ -1,3 +1,6 @@
+"use client";
+
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -14,7 +17,9 @@ import {
   Flame,
   TrendingUp,
   Zap,
+  X,
 } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
 
 import { Button } from "@/components/ui/button";
 import { Wordmark } from "@/components/logo";
@@ -93,6 +98,19 @@ const FOOTER_LINKS = {
 /* ---------- Page ---------- */
 
 export default function Home() {
+  const [isComingSoonOpen, setIsComingSoonOpen] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("comingsoon") === "true") {
+        setIsComingSoonOpen(true);
+        const newUrl = window.location.pathname;
+        window.history.replaceState({ path: newUrl }, "", newUrl);
+      }
+    }
+  }, []);
+
   return (
     <div className="relative min-h-screen overflow-x-clip bg-background">
       <ClickEffects />
@@ -109,8 +127,8 @@ export default function Home() {
       </div>
 
       <div className="relative z-10">
-        <SiteHeader />
-        <Hero />
+        <SiteHeader onComingSoonClick={() => setIsComingSoonOpen(true)} />
+        <Hero onComingSoonClick={() => setIsComingSoonOpen(true)} />
         <Ticker />
         <PhaseStrip />
         <ClearingPrices />
@@ -118,10 +136,68 @@ export default function Home() {
         <PrivacyShowcase />
         <Flywheel />
         <BrandBand />
-        <CTA />
-        <SiteFooter />
+        <CTA onComingSoonClick={() => setIsComingSoonOpen(true)} />
+        <SiteFooter onComingSoonClick={() => setIsComingSoonOpen(true)} />
       </div>
+
+      <ComingSoonModal isOpen={isComingSoonOpen} onClose={() => setIsComingSoonOpen(false)} />
     </div>
+  );
+}
+
+function ComingSoonModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 10 }}
+            transition={{ duration: 0.15, ease: "easeOut" }}
+            className="w-full max-w-sm overflow-hidden rounded-2xl border border-border bg-card/90 p-6 shadow-2xl backdrop-blur-md relative text-center"
+          >
+            <button
+              onClick={onClose}
+              className="absolute top-4 right-4 rounded-lg p-1 text-muted-foreground hover:bg-white/5 hover:text-foreground transition-colors"
+            >
+              <X className="h-4 w-4" />
+            </button>
+
+            <div className="flex flex-col items-center">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full border border-primary/20 bg-primary/5 text-primary mb-4">
+                <Lock className="h-6 w-6" />
+              </div>
+              <h3 className="text-lg font-semibold text-foreground">Launch Coming Soon</h3>
+              <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
+                Obscura&apos;s private compute pool and dark-market matches are currently undergoing final audits and Devnet deployment. Join our community to be notified when the mainnet application goes live.
+              </p>
+
+              <div className="mt-6 flex flex-col gap-2 w-full">
+                <a
+                  href="https://x.com/obscuraonsol?s=21"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-border bg-background/50 py-2 text-xs font-medium text-foreground hover:bg-white/5 transition-colors"
+                >
+                  Follow on X (Twitter)
+                  <ExternalLink className="h-3 w-3 opacity-60" />
+                </a>
+                <a
+                  href="https://t.me/obscurasolana"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-border bg-background/50 py-2 text-xs font-medium text-foreground hover:bg-white/5 transition-colors"
+                >
+                  Join Telegram Channel
+                  <ExternalLink className="h-3 w-3 opacity-60" />
+                </a>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
   );
 }
 
@@ -129,11 +205,18 @@ export default function Home() {
 
 /* ---------- Hero ---------- */
 
-function Hero() {
+function Hero({ onComingSoonClick }: { onComingSoonClick: () => void }) {
   return (
     <section className="relative overflow-hidden">
       <div className="container relative flex flex-col items-center pb-24 pt-28 text-center md:pt-36">
         <HeroStagger className="flex flex-col items-center">
+          <HeroItem>
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/5 px-3.5 py-1 text-xs font-mono text-primary mb-6 animate-pulse">
+              <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+              CA: Coming Soon
+            </span>
+          </HeroItem>
+
           <HeroItem>
             <h1 className="max-w-4xl text-5xl font-bold leading-[1.05] tracking-tight sm:text-6xl md:text-7xl lg:text-8xl">
               Compute
@@ -152,17 +235,13 @@ function Hero() {
 
           <HeroItem>
             <div className="mt-10 flex flex-col items-center gap-3 sm:flex-row">
-              <Link href="/dashboard">
-                <Button size="lg" variant="white">
-                  Launch app
-                  <ArrowRight className="ml-1.5 h-4 w-4" />
-                </Button>
-              </Link>
-              <Link href="/marketplace">
-                <Button size="lg" variant="outline">
-                  View live prices
-                </Button>
-              </Link>
+              <Button size="lg" variant="white" onClick={onComingSoonClick}>
+                Coming soon
+                <ArrowRight className="ml-1.5 h-4 w-4" />
+              </Button>
+              <Button size="lg" variant="outline" onClick={onComingSoonClick}>
+                View live prices
+              </Button>
             </div>
           </HeroItem>
 
@@ -375,7 +454,7 @@ function Flywheel() {
 
 /* ---------- CTA ---------- */
 
-function CTA() {
+function CTA({ onComingSoonClick }: { onComingSoonClick: () => void }) {
   return (
     <section className="container py-24">
       <ScaleIn>
@@ -407,12 +486,10 @@ function CTA() {
             </FadeIn>
             <FadeIn delay={0.3}>
               <div className="mt-8 flex justify-center">
-                <Link href="/dashboard">
-                  <Button size="lg" variant="white">
-                    Launch app
-                    <ArrowRight className="ml-1.5 h-4 w-4" />
-                  </Button>
-                </Link>
+                <Button size="lg" variant="white" onClick={onComingSoonClick}>
+                  Coming soon
+                  <ArrowRight className="ml-1.5 h-4 w-4" />
+                </Button>
               </div>
             </FadeIn>
           </div>
@@ -424,7 +501,7 @@ function CTA() {
 
 /* ---------- Footer ---------- */
 
-function SiteFooter() {
+function SiteFooter({ onComingSoonClick }: { onComingSoonClick: () => void }) {
   return (
     <footer className="relative overflow-hidden border-t border-border">
       {/* Giant OBSCURA background text */}
@@ -458,12 +535,12 @@ function SiteFooter() {
             <ul className="mt-4 space-y-3">
               {FOOTER_LINKS.product.map(([label, href]) => (
                 <li key={label}>
-                  <Link
-                    href={href}
-                    className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+                  <button
+                    onClick={onComingSoonClick}
+                    className="text-sm text-muted-foreground transition-colors hover:text-foreground text-left"
                   >
                     {label}
-                  </Link>
+                  </button>
                 </li>
               ))}
             </ul>
@@ -528,6 +605,9 @@ function SiteFooter() {
           <div className="mt-16 flex flex-col items-center justify-between gap-4 border-t border-border pt-8 md:flex-row">
             <p className="data text-xs text-muted-foreground/50">
               © {new Date().getFullYear()} Obscura. Compute in the dark.
+            </p>
+            <p className="data text-xs text-primary font-mono font-medium animate-pulse">
+              CA: Coming Soon
             </p>
             <p className="data text-xs text-muted-foreground/40">
               Pseudonymous · No KYC · USDC-settled
