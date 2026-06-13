@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { PhaseBadge } from "@/components/ui/badge";
 import { FadeIn, StaggerContainer, StaggerItem } from "@/components/motion";
 import { useWallet } from "@/lib/wallet";
+import { useSession } from "@/lib/session";
 import { ordersApi, type SessionOrder } from "@/lib/api";
 import { computeCommitHash, randomSecretHex, usdToMicro } from "@/lib/commit";
 import { cn, fmtUsdHr, shortHash } from "@/lib/utils";
@@ -32,6 +33,7 @@ function loadReveal(id: string): RevealData | null {
 
 export function OrderFlow() {
   const { wallet, connect } = useWallet();
+  const { signedIn, signIn } = useSession();
   const [orders, setOrders] = useState<SessionOrder[]>([]);
   const [gpuType, setGpuType] = useState(GPU_TYPES[0]);
   const [price, setPrice] = useState("1.8000");
@@ -70,18 +72,29 @@ export function OrderFlow() {
 
   async function handleCommit() {
     setError(null);
-    const w = wallet ?? connect();
+    if (!wallet) {
+      connect();
+      return;
+    }
     if (!validInputs || !previewHash) {
       setError("enter a positive price and a whole-number quantity");
       return;
     }
+    // Sign in with Solana once so the commit is authenticated.
+    if (!signedIn) {
+      const ok = await signIn();
+      if (!ok) {
+        setError("sign-in was rejected — approve the signature to commit");
+        return;
+      }
+    }
     setBusy(true);
     try {
       const priceMicro = Number(usdToMicro(priceNum));
-      const { id } = await ordersApi.commit(w, gpuType, previewHash);
+      const { id } = await ordersApi.commit(wallet, gpuType, previewHash);
       saveReveal(id, { secret, priceMicro, qty: qtyNum });
       setSecret(randomSecretHex()); // rotate for the next order
-      await refresh(w);
+      await refresh(wallet);
     } catch (e) {
       setError(e instanceof Error ? e.message : "commit failed");
     } finally {
@@ -187,7 +200,7 @@ export function OrderFlow() {
 
             <Button onClick={handleCommit} disabled={busy} className="w-full" size="lg">
               {busy ? <Loader2 className="animate-spin" /> : <Lock />}
-              Commit order
+              {!wallet ? "Connect wallet" : "Commit order"}
             </Button>
 
             {error ? (

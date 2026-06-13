@@ -11,17 +11,22 @@
     "check": "tsc --noEmit"
   },
   "dependencies": {
+    "@noble/hashes": "^1.7.1",
+    "@radix-ui/react-slot": "^1.1.1",
+    "@solana/wallet-adapter-base": "^0.9.27",
+    "@solana/wallet-adapter-react": "^0.15.39",
+    "@solana/wallet-adapter-react-ui": "^0.9.39",
+    "@solana/web3.js": "^1.98.4",
+    "bs58": "^6.0.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "framer-motion": "^11.18.0",
+    "lucide-react": "^0.469.0",
     "next": "15.5.19",
     "react": "19.0.0",
     "react-dom": "19.0.0",
-    "@noble/hashes": "^1.7.1",
-    "@radix-ui/react-slot": "^1.1.1",
-    "class-variance-authority": "^0.7.1",
-    "clsx": "^2.1.1",
     "tailwind-merge": "^2.6.0",
-    "tailwindcss-animate": "^1.0.7",
-    "lucide-react": "^0.469.0",
-    "framer-motion": "^11.18.0"
+    "tailwindcss-animate": "^1.0.7"
   },
   "devDependencies": {
     "typescript": "^5.7.3",

@@ -1,9 +1,35 @@
 import { Router } from "express";
+import { z } from "zod";
 
 import { query } from "../db/index.ts";
 import { asyncHandler } from "../lib/async.ts";
 
 export const providersRouter = Router();
+
+// POST /api/providers — register GPU capacity as a node operator.
+const providerSchema = z.object({
+  wallet: z.string().regex(/^[1-9A-HJ-NP-Za-km-z]{32,44}$/, "invalid Solana address"),
+  gpuType: z.string().min(1).max(64),
+  capacity: z.number().int().positive(),
+  stakeAmount: z.number().nonnegative().default(0),
+});
+providersRouter.post(
+  "/providers",
+  asyncHandler(async (req, res) => {
+    const parsed = providerSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: "validation_failed", issues: parsed.error.issues });
+      return;
+    }
+    const { wallet, gpuType, capacity, stakeAmount } = parsed.data;
+    const { rows } = await query<{ id: string }>(
+      `INSERT INTO providers (wallet, gpu_type, capacity, stake_amount, status)
+       VALUES ($1, $2, $3, $4, 'active') RETURNING id`,
+      [wallet, gpuType, capacity, stakeAmount],
+    );
+    res.status(201).json({ id: rows[0].id, gpuType, capacity, status: "active" });
+  }),
+);
 
 // GET /api/providers — GPU provider listings (public-safe).
 providersRouter.get(

@@ -18,6 +18,9 @@ import {
 import { Wordmark } from "@/components/logo";
 import { Button } from "@/components/ui/button";
 import { ClickEffects } from "@/components/click-effects";
+import { useWallet } from "@/lib/wallet";
+import { useSession } from "@/lib/session";
+import { shortHash } from "@/lib/utils";
 
 const NAV = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -128,19 +131,46 @@ export function AppFrame({
                 Back to landing
               </Link>
 
-              <div className="mt-auto rounded-lg border border-border bg-card/40 p-3">
-                <div className="data text-[11px] uppercase tracking-widest text-muted-foreground">
-                  Session
-                </div>
-                <div className="data mt-1 text-xs text-foreground">not connected</div>
-                <Button size="sm" className="mt-3 w-full">
-                  Sign in with Solana
-                </Button>
-              </div>
+              <SessionBox />
             </motion.div>
           </>
         )}
       </AnimatePresence>
+    </div>
+  );
+}
+
+function SessionBox() {
+  const { wallet, connect, disconnect } = useWallet();
+  const { signedIn, signingIn, signIn } = useSession();
+
+  return (
+    <div className="mt-auto rounded-lg border border-border bg-card/40 p-3">
+      <div className="data flex items-center justify-between text-[11px] uppercase tracking-widest text-muted-foreground">
+        Session
+        {signedIn && <span className="text-primary">● signed in</span>}
+      </div>
+      <div className="data mt-1 text-xs text-foreground">
+        {wallet ? shortHash(wallet, 4, 4) : "not connected"}
+      </div>
+      {!wallet ? (
+        <Button size="sm" className="mt-3 w-full" onClick={connect}>
+          Connect wallet
+        </Button>
+      ) : !signedIn ? (
+        <Button size="sm" className="mt-3 w-full" onClick={() => void signIn()} disabled={signingIn}>
+          {signingIn ? "Check your wallet…" : "Sign in with Solana"}
+        </Button>
+      ) : (
+        <Button
+          size="sm"
+          variant="outline"
+          className="mt-3 w-full"
+          onClick={() => void disconnect()}
+        >
+          Disconnect
+        </Button>
+      )}
     </div>
   );
 }

@@ -1,42 +1,21 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-
-const KEY = "obscura:wallet";
-const B58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+import { useCallback } from "react";
+import { useWallet as useAdapterWallet } from "@solana/wallet-adapter-react";
+import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 
 /**
- * Dev wallet stand-in. Generates and persists a base58-shaped address in
- * localStorage so the order flow works end-to-end before real Sign-In-With-
- * Solana / wallet-adapter lands (tech-updates Wave 1 #1).
+ * Real Solana wallet connection via wallet-adapter (Phantom, Solflare,
+ * Backpack, and any Wallet-Standard wallet). `connect` opens the wallet picker;
+ * `wallet` is the connected public key in base58, or null.
  */
 export function useWallet() {
-  const [wallet, setWallet] = useState<string | null>(null);
+  const { publicKey, connected, connecting, disconnect, signMessage } =
+    useAdapterWallet();
+  const { setVisible } = useWalletModal();
 
-  useEffect(() => {
-    setWallet(localStorage.getItem(KEY));
-  }, []);
+  const wallet = publicKey ? publicKey.toBase58() : null;
+  const connect = useCallback(() => setVisible(true), [setVisible]);
 
-  const connect = useCallback(() => {
-    const existing = localStorage.getItem(KEY);
-    if (existing) {
-      setWallet(existing);
-      return existing;
-    }
-    let addr = "";
-    const bytes = new Uint8Array(32);
-    crypto.getRandomValues(bytes);
-    for (const b of bytes) addr += B58[b % B58.length];
-    addr = addr.slice(0, 44);
-    localStorage.setItem(KEY, addr);
-    setWallet(addr);
-    return addr;
-  }, []);
-
-  const disconnect = useCallback(() => {
-    localStorage.removeItem(KEY);
-    setWallet(null);
-  }, []);
-
-  return { wallet, connect, disconnect };
+  return { wallet, connected, connecting, connect, disconnect, signMessage, publicKey };
 }
