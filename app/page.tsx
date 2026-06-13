@@ -1,7 +1,5 @@
-import Link from "next/link";
 import Image from "next/image";
 import {
-  ArrowRight,
   Lock,
   Boxes,
   ShieldCheck,
@@ -11,9 +9,14 @@ import {
   ExternalLink,
 } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
 import { Wordmark } from "@/components/logo";
 import { SiteHeader } from "@/components/site-header";
+import {
+  ComingSoonProvider,
+  ComingSoonButton,
+  ComingSoonLink,
+  CABadge,
+} from "@/components/coming-soon";
 import { ClickEffects } from "@/components/click-effects";
 import {
   FadeIn,
@@ -89,6 +92,7 @@ const FOOTER_LINKS = {
 
 export default function Home() {
   return (
+    <ComingSoonProvider>
     <div className="relative min-h-screen overflow-x-clip bg-background">
       <ClickEffects />
       {/* Hero background image covering header + hero */}
@@ -115,6 +119,7 @@ export default function Home() {
         <SiteFooter />
       </div>
     </div>
+    </ComingSoonProvider>
   );
 }
 
@@ -144,18 +149,14 @@ function Hero() {
           </HeroItem>
 
           <HeroItem>
-            <div className="mt-10 flex flex-col items-center gap-3 sm:flex-row">
-              <Link href="/dashboard">
-                <Button size="lg">
-                  Launch app
-                  <ArrowRight className="ml-1.5 h-4 w-4" />
-                </Button>
-              </Link>
-              <Link href="/marketplace">
-                <Button size="lg" variant="outline">
-                  View live prices
-                </Button>
-              </Link>
+            <div className="mt-8">
+              <CABadge />
+            </div>
+          </HeroItem>
+
+          <HeroItem>
+            <div className="mt-8 flex justify-center">
+              <ComingSoonButton size="lg">Coming soon</ComingSoonButton>
             </div>
           </HeroItem>
 
@@ -384,13 +385,9 @@ function CTA() {
               </p>
             </FadeIn>
             <FadeIn delay={0.3}>
-              <div className="mt-8 flex justify-center">
-                <Link href="/dashboard">
-                  <Button size="lg">
-                    Launch app
-                    <ArrowRight className="ml-1.5 h-4 w-4" />
-                  </Button>
-                </Link>
+              <div className="mt-8 flex flex-col items-center gap-5">
+                <ComingSoonButton size="lg">Coming soon</ComingSoonButton>
+                <CABadge />
               </div>
             </FadeIn>
           </div>
@@ -426,6 +423,7 @@ function SiteFooter() {
               A dark pool for GPU compute on Solana. Encrypted order books,
               batch auctions, USDC-settled.
             </p>
+            <CABadge className="mt-5" />
           </StaggerItem>
 
           {/* Product links */}
@@ -434,14 +432,11 @@ function SiteFooter() {
               Product
             </h4>
             <ul className="mt-4 space-y-3">
-              {FOOTER_LINKS.product.map(([label, href]) => (
+              {FOOTER_LINKS.product.map(([label]) => (
                 <li key={label}>
-                  <Link
-                    href={href}
-                    className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-                  >
+                  <ComingSoonLink className="text-sm text-muted-foreground transition-colors hover:text-foreground">
                     {label}
-                  </Link>
+                  </ComingSoonLink>
                 </li>
               ))}
             </ul>

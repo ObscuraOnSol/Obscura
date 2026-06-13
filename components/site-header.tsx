@@ -2,23 +2,26 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Menu, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 
 import { Button } from "@/components/ui/button";
 import { Wordmark } from "@/components/logo";
+import { useComingSoon } from "@/components/coming-soon";
+
+// `soon: true` items would enter the app, so they open the coming-soon modal.
+const NAV = [
+  { label: "Marketplace", soon: true },
+  { label: "Orders", soon: true },
+  { label: "Agents", soon: true },
+  { label: "Whitepaper", href: "#" },
+  { label: "Roadmap", href: "#" },
+  { label: "Docs", href: "#" },
+] as const;
 
 export function SiteHeader() {
   const [isOpen, setIsOpen] = useState(false);
-
-  const nav = [
-    ["Marketplace", "/marketplace"],
-    ["Orders", "/orders"],
-    ["Agents", "/agent"],
-    ["Whitepaper", "#"],
-    ["Roadmap", "#"],
-    ["Docs", "#"],
-  ] as const;
+  const { open } = useComingSoon();
 
   return (
     <>
@@ -28,30 +31,32 @@ export function SiteHeader() {
             <Wordmark />
           </Link>
           <nav className="hidden items-center gap-8 md:flex">
-            {nav.map(([label, href]) => (
-              <Link
-                key={label}
-                href={href}
-                className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-              >
-                {label}
-              </Link>
-            ))}
+            {NAV.map((item) =>
+              "soon" in item ? (
+                <button
+                  key={item.label}
+                  onClick={open}
+                  className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  {item.label}
+                </button>
+              ) : (
+                <Link
+                  key={item.label}
+                  href={item.href}
+                  className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  {item.label}
+                </Link>
+              ),
+            )}
           </nav>
           <div className="flex items-center gap-3">
-            {/* Desktop Auth */}
+            {/* Desktop CTA */}
             <div className="hidden items-center gap-3 md:flex">
-              <Link href="/dashboard">
-                <Button variant="ghost" size="sm">
-                  Sign in
-                </Button>
-              </Link>
-              <Link href="/dashboard">
-                <Button size="sm">
-                  Launch app
-                  <ArrowRight className="ml-1 h-3.5 w-3.5" />
-                </Button>
-              </Link>
+              <Button size="sm" onClick={open}>
+                Coming soon
+              </Button>
             </div>
 
             {/* Mobile Hamburger Button */}
@@ -70,7 +75,6 @@ export function SiteHeader() {
       <AnimatePresence>
         {isOpen && (
           <>
-            {/* Backdrop */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -78,7 +82,6 @@ export function SiteHeader() {
               onClick={() => setIsOpen(false)}
               className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm md:hidden"
             />
-            {/* Drawer Content */}
             <motion.div
               initial={{ x: "100%" }}
               animate={{ x: 0 }}
@@ -97,30 +100,41 @@ export function SiteHeader() {
               </div>
 
               <nav className="mt-12 flex flex-col gap-6">
-                {nav.map(([label, href]) => (
-                  <Link
-                    key={label}
-                    href={href}
-                    onClick={() => setIsOpen(false)}
-                    className="text-lg font-medium text-muted-foreground transition-colors hover:text-foreground"
-                  >
-                    {label}
-                  </Link>
-                ))}
+                {NAV.map((item) =>
+                  "soon" in item ? (
+                    <button
+                      key={item.label}
+                      onClick={() => {
+                        open();
+                        setIsOpen(false);
+                      }}
+                      className="text-left text-lg font-medium text-muted-foreground transition-colors hover:text-foreground"
+                    >
+                      {item.label}
+                    </button>
+                  ) : (
+                    <Link
+                      key={item.label}
+                      href={item.href}
+                      onClick={() => setIsOpen(false)}
+                      className="text-lg font-medium text-muted-foreground transition-colors hover:text-foreground"
+                    >
+                      {item.label}
+                    </Link>
+                  ),
+                )}
               </nav>
 
-              <div className="mt-auto flex flex-col gap-3">
-                <Link href="/dashboard" onClick={() => setIsOpen(false)}>
-                  <Button variant="outline" className="w-full">
-                    Sign in
-                  </Button>
-                </Link>
-                <Link href="/dashboard" onClick={() => setIsOpen(false)}>
-                  <Button className="w-full">
-                    Launch app
-                    <ArrowRight className="ml-1 h-3.5 w-3.5" />
-                  </Button>
-                </Link>
+              <div className="mt-auto">
+                <Button
+                  className="w-full"
+                  onClick={() => {
+                    open();
+                    setIsOpen(false);
+                  }}
+                >
+                  Coming soon
+                </Button>
               </div>
             </motion.div>
           </>
