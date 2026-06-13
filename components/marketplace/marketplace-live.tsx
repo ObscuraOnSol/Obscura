@@ -77,16 +77,32 @@ function SkeletonGrid() {
 
 export function DataError({ message }: { message: string }) {
   return (
-    <FadeIn>
-      <div className="flex items-start gap-3 rounded-xl border border-destructive/40 bg-destructive/10 p-5 text-sm text-destructive">
-        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-        <div>
-          <div className="font-medium">Couldn&apos;t reach the API</div>
-          <p className="mt-1 text-destructive/80">
-            {message}. Is the backend running on{" "}
-            <code className="data">NEXT_PUBLIC_API_URL</code>? Start it with{" "}
-            <code className="data">cd backend &amp;&amp; bun run dev</code>.
-          </p>
+    <FadeIn className="flex min-h-[50vh] flex-col items-center justify-center p-6 text-center">
+      <div className="w-full max-w-md rounded-2xl border border-destructive/25 bg-destructive/5 p-8 shadow-xl backdrop-blur-sm">
+        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border border-destructive/20 bg-destructive/10 text-destructive mb-4">
+          <AlertTriangle className="h-6 w-6" />
+        </div>
+        <h3 className="text-lg font-semibold text-foreground">API Connection Offline</h3>
+        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+          Obscura was unable to communicate with the compute pool API. The node might be temporarily offline, or your local backend is not active.
+        </p>
+
+        <div className="mt-6 border-t border-border/40 pt-4 text-left">
+          <details className="group cursor-pointer">
+            <summary className="list-none flex items-center justify-between text-xs font-mono text-muted-foreground/80 hover:text-foreground select-none">
+              <span>Technical Details</span>
+              <span className="transition-transform duration-200 group-open:rotate-180 text-[10px]">▼</span>
+            </summary>
+            <div className="mt-3 text-[11px] font-mono leading-relaxed text-muted-foreground/60 break-words bg-black/30 rounded-lg p-3 border border-border/30">
+              <p className="text-destructive/80 font-semibold mb-1">Error: {message}</p>
+              <p className="mt-1">
+                Ensure the backend service is running on <code className="text-foreground bg-white/5 px-1 py-0.5 rounded font-bold">NEXT_PUBLIC_API_URL</code>.
+              </p>
+              <p className="mt-2 text-primary">
+                To start it: <code className="text-foreground bg-white/5 px-1 py-0.5 rounded font-bold">cd backend && bun run dev</code>
+              </p>
+            </div>
+          </details>
         </div>
       </div>
     </FadeIn>
