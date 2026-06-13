@@ -1,96 +1,77 @@
-# Obscura — Tech Updates
+# Obscura — Build & Tech Plan
 
-Post-launch shipping plan. 5 waves, 5 features each, one wave per day. Features
-are numbered sequentially (#1–#25). Branch convention: `feat/wave{N}-tu-{M}`.
+The strategy is **ship a real, working MVP first**, then iterate. The MVP is not
+a demo with seeded numbers — the commit→reveal→match→settle lifecycle actually
+runs end to end against PostgreSQL, providers are real rows, and every read API
+reflects real activity. Everything after the MVP is an improvement wave.
 
 ---
 
-## Wave 1 — Polish what's live
+## v1 — MVP (what actually ships)
 
-- **Wire SIWS signature verification** `#1`
-  - Frontend: Solana wallet-adapter sign flow against `/api/auth/nonce` + `/api/auth/verify`.
-  - Backend: verify ed25519 signature of the statement in `auth.ts`, then mint a short-TTL JWT.
-- **Configurable batch interval** `#2`
-  - Frontend: show the live "next batch" countdown from a config value, not a hardcoded 45s.
-  - Backend: already reads `MATCHING_INTERVAL_SECONDS`; expose it via `/api/market/stats`.
-- **Real clearing prices on the landing/marketplace** `#3`
-  - Frontend: replace the mock `CLEARING` array with a fetch to `GET /api/market/prices`.
-  - Backend: seed `market_prices` and ensure the endpoint returns the latest per GPU type.
-- **GPU type registry** `#4`
-  - Frontend: dropdowns pull from a `/api/market/gpu-types` list instead of inline strings.
-  - Backend: add `GET /api/market/gpu-types` deriving distinct types from `market_prices`/`providers`.
-- **Health/version surface** `#5`
-  - Frontend: tiny footer build-version readout from `/api/health`.
-  - Backend: include git sha in `version` (already returns `npm_package_version`).
+The minimum that makes Obscura a *working product*, not a mockup. All of this is
+real: data is produced by the system, not hand-seeded.
 
-## Wave 2 — User-facing engagement
+| Area | MVP scope |
+|---|---|
+| **Order lifecycle** | `commit → reveal → match → settle` runs for real. The matching-engine worker runs every `MATCHING_INTERVAL_SECONDS`, pulls revealed orders, clears a per-GPU batch price, writes `settlements` + `market_prices`, and advances orders to `matched`/`settled`. No seeded settlements. |
+| **Auth** | Sign-In-With-Solana: nonce issue → wallet signs → ed25519 verify → short-TTL JWT session. Replaces the demo localStorage wallet. |
+| **Providers** | Real provider registration (`POST /api/providers`, auth-gated). Marketplace depth + clearing prices are computed from real providers + matched batches. |
+| **Orders UI** | Commit-reveal flow tied to the signed-in wallet; live phase per order, driven by the worker advancing state. |
+| **Agent API** | Token-gated `X-API-Key` submit/list/cancel, tier-gated rate limits. |
+| **Read APIs** | `market/prices`, `market/stats`, `providers`, `settlements`, `orders/metrics` — all reading live tables. |
+| **Activity** | Real wallet timeline (orders + settlements) with CSV export. |
+| **Infra** | Backend container on Render (`/health` check), frontend on Vercel, Postgres (Supabase). Migrations on boot. |
 
-- **Commit-reveal order flow UI** `#6`
-  - Frontend: build the real `/orders` flow — choose GPU/price/qty, client-side `keccak` commit, reveal step, phase chips.
-  - Backend: `POST /api/orders` commit + `POST /api/orders/:id/reveal` for session users (not just agents).
-- **Activity feed + CSV export** `#7`
-  - Frontend: flesh out `/activity` — wallet timeline, filter by type, CSV download.
-  - Backend: `GET /api/activity` unifying orders + settlements for a wallet.
-- **Price alerts** `#8`
-  - Frontend: "notify when H100 < $X/hr" form in `/settings`.
-  - Backend: `price_alerts` table + a worker that checks thresholds against `market_prices`.
-- **Transaction receipts** `#9`
-  - Frontend: receipt modal on each fill — block, timestamp, compute cost, confirmations, explorer link.
-  - Backend: `GET /api/orders/:id/receipt` returning settlement references.
-- **Notification preferences** `#10`
-  - Frontend: toggle channels (email/in-app) in `/settings`.
-  - Backend: `notification_prefs` JSONB column on `users` + read/write endpoint.
+**Definition of done for v1:** a new wallet can sign in, commit an order, reveal
+it, and watch the next batch actually match and settle it — with the dashboard,
+marketplace, and activity feed all reflecting that real event.
 
-## Wave 3 — Core product expansion
+---
 
-- **Live fills via WebSocket** `#11`
-  - Frontend: subscribe to live fills/prices; update dashboard without refresh.
-  - Backend: WS endpoint broadcasting settlement events (pub/sub over the matching loop).
-- **Matching engine worker** `#12`
-  - Frontend: "matching" phase animates while a batch runs.
-  - Backend: scheduled batch auction that reads revealed orders, computes a clearing price, writes `settlements`.
-- **Price-oracle aggregator** `#13`
-  - Frontend: 24h sparkline on each marketplace card.
-  - Backend: worker aggregating clearing prices into `market_prices` on an interval.
-- **Provider onboarding** `#14`
-  - Frontend: provider registration form (GPU type, capacity, stake).
-  - Backend: `POST /api/providers` writing to the `providers` table (auth-gated).
-- **Paper-trading mode** `#15`
-  - Frontend: walletless "practice" toggle with a weekly leaderboard.
-  - Backend: `paper_orders` table + `GET /api/leaderboard`.
+## Post-launch improvement waves
 
-## Wave 4 — Business / agent tier
+Each feature is scoped to ship in a day. Branch convention: `feat/wave{N}-tu-{M}`.
 
-- **API-key management UI** `#16`
-  - Frontend: generate/list/revoke keys in `/settings` (plaintext shown once).
-  - Backend: `POST/GET/DELETE /api/keys` using `generateApiKey()` + `api_keys` table.
-- **Tier resolution from on-chain $OBSC** `#17`
-  - Frontend: show current tier + rate limit in agent mode.
-  - Backend: resolve `tier_cache` from on-chain $OBSC balance (5-min cache) instead of a static default.
-- **Rate limiting middleware** `#18`
-  - Frontend: surface 429s gracefully with retry-after.
-  - Backend: per-IP (anonymous 60/min) and per-key tier limits (`TIER_LIMITS`) middleware.
-- **SAS agent passports** `#19`
-  - Frontend: agent passport status + policy (spend caps, daily limits) in `/agent`.
-  - Backend: `agent_passports` read/write + policy enforcement on the order API.
-- **Reputation ledger** `#20`
-  - Frontend: reputation score (0–100) with signal ratio in agent mode.
-  - Backend: reputation indexer worker updating scores from on-chain events with decay.
+### Wave 1 — Harden the lifecycle
+- **Live fills via WebSocket** `#1` — push settlement events to the dashboard; no refresh. *Backend:* WS broadcast from the matching loop.
+- **Configurable batch interval surfaced** `#2` — show the live countdown from `MATCHING_INTERVAL_SECONDS` via `/api/market/stats`.
+- **Order receipts** `#3` — per-fill receipt (batch, clearing price, timestamp). *Backend:* `GET /api/orders/:id/receipt`.
+- **Price sparklines** `#4` — 24h mini-charts on marketplace cards from `market_prices` history.
+- **Reputation seed** `#5` — basic provider reputation (fill rate, uptime) surfaced on listings.
 
-## Wave 5 — Scale + ecosystem
+### Wave 2 — Engagement
+- **Price alerts** `#6` — "notify when H100 < $X/hr"; `price_alerts` table + worker.
+- **Notification prefs** `#7` — `notification_prefs` JSONB on `users`.
+- **Paper-trading mode** `#8` — walletless practice + leaderboard.
+- **Order templates** `#9` — saved GPU/price/qty presets.
+- **Email/Telegram receipts** `#10` — push fills to a channel.
 
-- **Redis cache + pub/sub** `#21`
-  - Frontend: no change.
-  - Backend: add Redis for tier cache + live-fill pub/sub (replace in-process state).
-- **OpenAPI docs** `#22`
-  - Frontend: link to `/api/v1/docs` from the footer.
-  - Backend: generate an OpenAPI spec from the routes and serve a Scalar UI.
-- **GPU cost calculator** `#23`
-  - Frontend: walletless Obscura-vs-AWS/GCP calculator on a `/calculator` page.
-  - Backend: `GET /api/market/compare` returning hyperscaler reference prices.
-- **Agent MCP skill** `#24`
-  - Frontend: docs page describing the MCP/programmatic surface.
-  - Backend: publish an MCP descriptor + discovery metadata for the agent order API.
-- **$OBSC staking dashboard** `#25`
-  - Frontend: staking/yield view (USDC revenue share, buyback & burn stats).
-  - Backend: `GET /api/staking/stats` — requires the staking program/token address (blocked until token live).
+### Wave 3 — Market depth
+- **Multi-region GPU types** `#11` — expand beyond H100/A100/4090/L40S.
+- **Provider dashboard** `#12` — capacity, stake, slashing state, earnings.
+- **Partial fills** `#13` — split large orders across providers in a batch.
+- **Limit + market order types** `#14`.
+- **Depth chart** `#15` — order-book-style depth per GPU.
+
+### Wave 4 — Agent & business tier
+- **API-key management UI** `#16` — generate/list/revoke (plaintext shown once).
+- **Tier resolution from on-chain $OBSC** `#17` — live tier from token balance (5-min cache).
+- **Rate-limit middleware** `#18` — per-IP + per-key tiers.
+- **SAS agent passports** `#19` — spend caps, daily limits, policy enforcement.
+- **OpenAPI + MCP** `#20` — `/api/v1/docs` (Scalar) + an MCP descriptor for agents.
+
+### Wave 5 — Scale & onchain
+- **Redis cache + pub/sub** `#21` — replace in-process state.
+- **Anchor program integration** `#22` — wire `obscura_pool` commit/reveal/settle on devnet; IDs into env.
+- **Escrow + screened settlement** `#23` — USDC lock/release with the association-set proof gate (money-core; audited before mainnet).
+- **$OBSC staking dashboard** `#24` — buyback/burn stats, USDC yield (needs token live).
+- **Reputation indexer** `#25` — score from on-chain events with decay.
+
+---
+
+## Notes for whoever builds this
+
+- Read the codebase before adding a wave feature — don't invent services.
+- The MVP matching engine is in-process and deterministic; the ZK/Anchor settlement is a Wave-5 swap-in, not a v1 blocker.
+- Money-core (escrow, association-set verifier, settlement verifier) stays interface-level until audited — see `contract/README.md`.
