@@ -114,7 +114,9 @@ export default function Home() {
         <PhaseStrip />
         <ClearingPrices />
         <Features />
+        <PrivacyShowcase />
         <Flywheel />
+        <BrandBand />
         <CTA />
         <SiteFooter />
       </div>
@@ -233,6 +235,14 @@ function PhaseStrip() {
           </StaggerItem>
         ))}
       </StaggerContainer>
+      <FadeIn delay={0.2}>
+        <div className="mt-6">
+          <Frame
+            src="/photo_2026-06-13_18-00-11.jpg"
+            alt="Obscura order lifecycle — commit, reveal, match, settle"
+          />
+        </div>
+      </FadeIn>
     </section>
   );
 }
@@ -275,6 +285,14 @@ function ClearingPrices() {
         <p className="data mt-4 text-center text-xs text-muted-foreground/50">
           Indicative figures · production data from GET /api/market/prices
         </p>
+      </FadeIn>
+      <FadeIn delay={0.2}>
+        <div className="mt-10">
+          <Frame
+            src="/photo_2026-06-13_18-00-05.jpg"
+            alt="Obscura live clearing prices market feed"
+          />
+        </div>
       </FadeIn>
     </section>
   );
@@ -500,6 +518,84 @@ function SiteFooter() {
         </FadeIn>
       </div>
     </footer>
+  );
+}
+
+/* ---------- Graphic frame ---------- */
+
+function Frame({
+  src,
+  alt,
+  ratio = "aspect-[16/9]",
+}: {
+  src: string;
+  alt: string;
+  ratio?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        "group relative overflow-hidden rounded-xl border border-border bg-card/40",
+        ratio,
+      )}
+    >
+      <Image src={src} alt={alt} fill sizes="100vw" className="object-cover" />
+      <span className="pointer-events-none absolute left-3 top-3 h-4 w-4 border-l border-t border-primary/40" />
+      <span className="pointer-events-none absolute right-3 top-3 h-4 w-4 border-r border-t border-primary/40" />
+      <span className="pointer-events-none absolute bottom-3 left-3 h-4 w-4 border-b border-l border-primary/40" />
+      <span className="pointer-events-none absolute bottom-3 right-3 h-4 w-4 border-b border-r border-primary/40" />
+    </div>
+  );
+}
+
+/* ---------- Privacy showcase ---------- */
+
+function PrivacyShowcase() {
+  return (
+    <section className="container py-24">
+      <FadeIn>
+        <SectionHeading
+          eyebrow="Private by default"
+          title="Five layers of privacy, one clean exit"
+          sub="Order intent, size, and timing stay hidden through matching; settlement is screened so every external exit carries a clean-provenance proof."
+        />
+      </FadeIn>
+      <StaggerContainer
+        className="mt-14 grid gap-4 md:grid-cols-2"
+        staggerDelay={0.12}
+      >
+        <StaggerItem>
+          <Frame
+            src="/photo_2026-06-13_18-00-10.jpg"
+            alt="Obscura privacy architecture — private by default"
+            ratio="aspect-square"
+          />
+        </StaggerItem>
+        <StaggerItem>
+          <Frame
+            src="/photo_2026-06-13_18-00-13.jpg"
+            alt="Obscura — private GPU market"
+            ratio="aspect-square"
+          />
+        </StaggerItem>
+      </StaggerContainer>
+    </section>
+  );
+}
+
+/* ---------- Brand band ---------- */
+
+function BrandBand() {
+  return (
+    <section className="container py-12">
+      <ScaleIn>
+        <Frame
+          src="/photo_2026-06-13_18-00-14.jpg"
+          alt="Obscura — compute in the dark"
+          ratio="aspect-[21/9]"
+        />
+      </ScaleIn>
+    </section>
   );
 }
 
