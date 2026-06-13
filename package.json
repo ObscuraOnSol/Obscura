@@ -2,7 +2,7 @@
   "name": "obscura",
   "version": "0.1.0",
   "private": true,
-  "description": "Obscura — a dark pool for AI/GPU compute on Solana. Compute in the dark.",
+  "description": "Obscura: a privacy-preserving GPU compute marketplace on Solana.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

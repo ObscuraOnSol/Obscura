@@ -13,6 +13,7 @@ import {
   Menu,
   X,
   ArrowLeft,
+  BookOpen,
 } from "lucide-react";
 
 import { Wordmark } from "@/components/logo";
@@ -21,6 +22,7 @@ import { ClickEffects } from "@/components/click-effects";
 import { useWallet } from "@/lib/wallet";
 import { useSession } from "@/lib/session";
 import { shortHash } from "@/lib/utils";
+import { ReelAnimation } from "@/components/reel-animation";
 
 const NAV = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -29,6 +31,7 @@ const NAV = [
   { href: "/activity", label: "Activity", icon: Activity },
   { href: "/agent", label: "Agent mode", icon: Bot },
   { href: "/settings", label: "Settings", icon: Settings },
+  { href: "/docs", label: "Docs", icon: BookOpen },
 ];
 
 export function AppFrame({
@@ -47,11 +50,11 @@ export function AppFrame({
       {/* Custom cursor + click ripples, same as the landing page */}
       <ClickEffects />
 
-      {/* Top bar — logo (back to landing) on the left, hamburger nav on the right */}
+      {/* Top bar: logo (back to landing) on the left, hamburger nav on the right */}
       <header className="sticky top-0 z-40 border-b border-border bg-background/70 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           <div className="flex min-w-0 items-center gap-4">
-            <Link href="/" aria-label="Back to landing">
+            <Link href="/" aria-label="Back">
               <Wordmark className="[&_span]:hidden sm:[&_span]:inline" />
             </Link>
             <span className="hidden h-5 w-px bg-border sm:block" />
@@ -128,7 +131,7 @@ export function AppFrame({
                 className="mt-4 flex items-center gap-2 rounded-md px-3 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-card hover:text-foreground"
               >
                 <ArrowLeft className="h-4 w-4" />
-                Back to landing
+                Back
               </Link>
 
               <SessionBox />
@@ -179,19 +182,32 @@ export function StatCard({
   label,
   value,
   sub,
+  icon: Icon,
 }: {
   label: string;
   value: string;
   sub?: string;
+  icon?: React.ComponentType<{ className?: string }>;
 }) {
   return (
-    <div className="group rounded-xl border border-border bg-card/40 p-5 transition-colors hover:border-primary/30">
-      <div className="text-[11px] uppercase tracking-[0.15em] text-muted-foreground">
-        {label}
+    <div className="group relative overflow-hidden rounded-xl border border-border bg-card/40 p-5 transition-colors hover:border-primary/30">
+      {/* Background icon watermark: tilted, scale-up, and green-tinted on hover */}
+      {Icon && (
+        <div className="absolute -bottom-5 -right-5 pointer-events-none opacity-[0.06] text-primary transition-all duration-300 group-hover:scale-110 group-hover:rotate-[-6deg] group-hover:opacity-[0.12] ease-out">
+          <Icon className="h-24 w-24 rotate-[-12deg]" />
+        </div>
+      )}
+
+      <div className="flex items-center justify-between">
+        <div className="text-[11px] uppercase tracking-[0.15em] text-muted-foreground">
+          {label}
+        </div>
       </div>
-      <div className="data mt-2 text-2xl font-bold text-foreground">{value}</div>
+      <div className="data mt-2 text-2xl font-bold text-foreground relative z-10">
+        <ReelAnimation text={value} />
+      </div>
       {sub ? (
-        <div className="data mt-1 text-xs text-muted-foreground">{sub}</div>
+        <div className="data mt-1 text-xs text-muted-foreground relative z-10">{sub}</div>
       ) : null}
     </div>
   );

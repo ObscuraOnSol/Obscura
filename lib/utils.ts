@@ -11,8 +11,11 @@ export function fmtUsdHr(value: number): string {
 }
 
 /** Compact relative time, e.g. "3m ago", "2h ago". */
-export function fmtAgo(iso: string): string {
-  const secs = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 1000));
+export function fmtAgo(iso: string | null | undefined): string {
+  if (!iso) return "-";
+  const date = new Date(iso);
+  if (isNaN(date.getTime())) return "-";
+  const secs = Math.max(0, Math.floor((Date.now() - date.getTime()) / 1000));
   if (secs < 60) return `${secs}s ago`;
   if (secs < 3600) return `${Math.floor(secs / 60)}m ago`;
   if (secs < 86400) return `${Math.floor(secs / 3600)}h ago`;
@@ -20,7 +23,8 @@ export function fmtAgo(iso: string): string {
 }
 
 /** Short-form Solana address / hash for order readouts. */
-export function shortHash(hash: string, lead = 6, tail = 4): string {
+export function shortHash(hash: string | null | undefined, lead = 6, tail = 4): string {
+  if (!hash) return "-";
   if (hash.length <= lead + tail) return hash;
   return `${hash.slice(0, lead)}…${hash.slice(-tail)}`;
 }

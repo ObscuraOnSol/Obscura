@@ -9,8 +9,8 @@ const OG_DESCRIPTION =
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "Obscura — Compute in the dark.",
-    template: "%s — Obscura",
+    default: "Obscura | Compute in the dark.",
+    template: "%s | Obscura",
   },
   description:
     "A dark pool for AI/GPU compute on Solana. Encrypted order books, commit-reveal submission, ZK-matched batch auctions, USDC settlement. Built for AI agents and developers.",
@@ -25,7 +25,7 @@ export const metadata: Metadata = {
     "$OBSC",
   ],
   openGraph: {
-    title: "Obscura — Compute in the dark.",
+    title: "Obscura | Compute in the dark.",
     description: OG_DESCRIPTION,
     url: SITE_URL,
     siteName: "Obscura",
@@ -35,16 +35,16 @@ export const metadata: Metadata = {
         url: "/banner.png",
         width: 2172,
         height: 724,
-        alt: "Obscura — Compute in the dark.",
+        alt: "Obscura | Compute in the dark.",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Obscura — Compute in the dark.",
+    title: "Obscura | Compute in the dark.",
     description: OG_DESCRIPTION,
     images: ["/banner.png"],
-    site: "@obscurasol",
+    site: "@obscuraonsol",
   },
   icons: { icon: "/logo.png" },
 };

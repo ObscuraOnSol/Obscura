@@ -99,7 +99,7 @@ export function ApiKeys() {
         <FadeIn>
           <div className="mt-5 rounded-xl border border-primary/40 bg-primary/5 p-4">
             <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.15em] text-primary">
-              <Key className="h-3.5 w-3.5" /> Your new key — copy it now
+              <Key className="h-3.5 w-3.5" /> Your new key: copy it now
             </div>
             <div className="mt-3 flex items-center gap-2">
               <code className="data flex-1 truncate rounded-md border border-border bg-background/60 px-3 py-2 text-xs text-foreground">

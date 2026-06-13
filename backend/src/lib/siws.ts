@@ -3,7 +3,7 @@ import bs58 from "bs58";
 
 /** The exact message a wallet signs to sign in. Must match on both ends. */
 export function siwsStatement(nonce: string): string {
-  return `Sign in to Obscura — Compute in the dark.\nNonce: ${nonce}`;
+  return `Sign in to Obscura: Compute in the dark.\nNonce: ${nonce}`;
 }
 
 /** Verify an ed25519 signature of the SIWS statement against the wallet pubkey. */

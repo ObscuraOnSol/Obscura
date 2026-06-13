@@ -7,7 +7,7 @@ export default function ActivityPage() {
   return (
     <AppFrame active="/activity" title="Activity feed">
       <p className="mb-6 max-w-2xl text-sm text-muted-foreground">
-        Your complete order timeline — commits, reveals, fills, and cancels —
+        Your complete order timeline (commits, reveals, fills, and cancels)
         with relative timestamps and CSV export.
       </p>
       <ActivityFeed />

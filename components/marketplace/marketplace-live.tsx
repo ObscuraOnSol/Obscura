@@ -45,7 +45,7 @@ export function MarketplaceLive() {
               <div className="flex items-baseline justify-between">
                 <div className="text-lg font-semibold">{p.gpuType}</div>
                 <div className="data text-xl font-bold text-primary">
-                  {p.clearingPrice != null ? fmtUsdHr(p.clearingPrice) : "—"}
+                  {p.clearingPrice != null ? fmtUsdHr(p.clearingPrice) : "-"}
                 </div>
               </div>
               <div className="data mt-3 flex flex-wrap gap-x-6 gap-y-1 text-xs text-muted-foreground">
@@ -57,9 +57,7 @@ export function MarketplaceLive() {
           </StaggerItem>
         ))}
       </StaggerContainer>
-      <p className="data mt-4 text-xs text-muted-foreground/60">
-        Live from GET /api/providers + /api/market/prices
-      </p>
+
     </>
   );
 }

@@ -5,7 +5,7 @@ import { type ReactNode } from "react";
 
 /* ---------- Shared easing ---------- */
 
-const ease = [0.25, 0.1, 0.25, 1]; // cubic-bezier — smooth, not bouncy
+const ease = [0.25, 0.1, 0.25, 1]; // cubic-bezier: smooth, not bouncy
 
 /* ---------- FadeIn ---------- */
 
@@ -88,8 +88,7 @@ export function StaggerContainer({
         },
       }}
       initial="hidden"
-      whileInView="visible"
-      viewport={{ once: true, margin: "-40px" }}
+      animate="visible"
       className={className}
     >
       {children}
