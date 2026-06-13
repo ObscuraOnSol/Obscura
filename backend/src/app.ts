@@ -20,8 +20,19 @@ export function createApp() {
   const app = express();
 
   app.use(helmet());
-  app.use(cors({ origin: env.corsOrigin }));
+  app.use(
+    cors({
+      // "*" allows any origin; otherwise only the configured allow-list.
+      origin: env.corsOrigins.includes("*") ? "*" : env.corsOrigins,
+    }),
+  );
   app.use(express.json({ limit: "256kb" }));
+
+  // Friendly index + top-level health check (handy as Render's Health Check Path).
+  app.get("/", (_req, res) => {
+    res.json({ name: "Obscura API", status: "ok", health: "/health" });
+  });
+  app.use(healthRouter); // GET /health
 
   // All public + agent APIs live under /api.
   app.use("/api", healthRouter);

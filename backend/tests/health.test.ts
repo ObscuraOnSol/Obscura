@@ -17,6 +17,19 @@ describe("GET /api/health", () => {
     expect(parsed.toISOString()).toBe(res.body.timestamp);
   });
 
+  it("exposes a top-level /health for platform health checks", async () => {
+    const res = await request(app).get("/health");
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe("ok");
+  });
+
+  it("serves a friendly root index", async () => {
+    const res = await request(app).get("/");
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe("ok");
+    expect(res.body.health).toBe("/health");
+  });
+
   it("returns 404 json for unknown routes", async () => {
     const res = await request(app).get("/api/does-not-exist");
     expect(res.status).toBe(404);
