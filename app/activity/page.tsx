@@ -1,11 +1,16 @@
-import { AppFrame, Placeholder } from "@/components/app-frame";
+import { AppFrame } from "@/components/app-frame";
+import { ActivityFeed } from "@/components/activity/activity-feed";
 
 export const metadata = { title: "Activity" };
 
 export default function ActivityPage() {
   return (
     <AppFrame active="/activity" title="Activity feed">
-      <Placeholder note="Complete wallet timeline — fills, cancels, settlements — with relative timestamps, filter-by-type, and CSV export. Each fill carries a transaction receipt: block number, timestamp, compute cost, confirmations, and a Solana explorer link." />
+      <p className="mb-6 max-w-2xl text-sm text-muted-foreground">
+        Your complete order timeline (commits, reveals, fills, and cancels)
+        with relative timestamps and CSV export.
+      </p>
+      <ActivityFeed />
     </AppFrame>
   );
 }

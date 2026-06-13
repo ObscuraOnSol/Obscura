@@ -9,7 +9,7 @@
     --font-geist: 'Geist', system-ui, sans-serif;
     --font-geist-mono: 'Geist Mono', ui-monospace, monospace;
 
-    /* Obscura — black & white, with green only as the accent flick. */
+    /* Obscura - black & white, with green only as the accent flick. */
     --background: 0 0% 4%;        /* near-black, neutral */
     --foreground: 0 0% 96%;       /* near-white */
 
@@ -19,7 +19,7 @@
     --popover: 0 0% 6%;
     --popover-foreground: 0 0% 96%;
 
-    --primary: 160 60% 44%;       /* the green flick — accent only */
+    --primary: 160 60% 44%;       /* the green flick, accent only */
     --primary-foreground: 0 0% 4%;
 
     --secondary: 0 0% 14%;

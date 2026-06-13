@@ -7,12 +7,14 @@ import cors from "cors";
 import helmet from "helmet";
 
 import { env } from "./lib/env.ts";
+import { sessionMiddleware } from "./lib/session.ts";
 import { healthRouter } from "./routes/health.ts";
 import { marketRouter } from "./routes/market.ts";
 import { settlementsRouter } from "./routes/settlements.ts";
 import { providersRouter } from "./routes/providers.ts";
 import { ordersRouter } from "./routes/orders.ts";
 import { sessionRouter } from "./routes/session.ts";
+import { keysRouter } from "./routes/keys.ts";
 import { authRouter } from "./routes/auth.ts";
 
 /** Builds the Express app and wires routes. No server.listen here — see index.ts. */
@@ -27,6 +29,8 @@ export function createApp() {
     }),
   );
   app.use(express.json({ limit: "256kb" }));
+  // Attaches req.sessionWallet when a valid SIWS Bearer token is present.
+  app.use(sessionMiddleware);
 
   // Friendly index + top-level health check (handy as Render's Health Check Path).
   app.get("/", (_req, res) => {
@@ -41,6 +45,7 @@ export function createApp() {
   app.use("/api", providersRouter);
   app.use("/api", ordersRouter);
   app.use("/api", sessionRouter);
+  app.use("/api", keysRouter);
   app.use("/api", authRouter);
 
   app.use((_req, res) => {

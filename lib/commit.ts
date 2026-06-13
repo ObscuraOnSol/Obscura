@@ -2,7 +2,7 @@ import { keccak_256 } from "@noble/hashes/sha3";
 import { bytesToHex, hexToBytes } from "@noble/hashes/utils";
 
 /**
- * Client-side commit hashing — identical encoding to the backend
+ * Client-side commit hashing: identical encoding to the backend
  * (`backend/src/lib/commit.ts`) and the obscura_pool program:
  *
  *   keccak256( price_u64_LE(8) || qty_u64_LE(8) || secret(32) )

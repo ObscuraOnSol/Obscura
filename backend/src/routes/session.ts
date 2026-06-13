@@ -4,11 +4,13 @@ import { z } from "zod";
 import { query } from "../db/index.ts";
 import { asyncHandler } from "../lib/async.ts";
 import { computeCommitHash, commitMatches } from "../lib/commit.ts";
+import type { SessionRequest } from "../lib/session.ts";
 
 /**
  * Browser/session order API for wallet-connected users (as opposed to the
- * X-API-Key agent API). The wallet is currently taken from the request body —
- * once SIWS is fully wired it will come from the verified JWT session instead.
+ * X-API-Key agent API). When the caller presents a valid SIWS session token the
+ * wallet comes from that verified token; otherwise it falls back to the body
+ * wallet (the connected address) for read-style flows.
  *
  * Privacy note: price/qty are NEVER persisted. At reveal we verify the preimage
  * against the stored commit hash and then discard it; matching the actual values
@@ -41,7 +43,8 @@ sessionRouter.post(
       res.status(400).json({ error: "validation_failed", issues: parsed.error.issues });
       return;
     }
-    const { wallet: w, gpuType, commitHash: hash } = parsed.data;
+    const w = (req as SessionRequest).sessionWallet ?? parsed.data.wallet;
+    const { gpuType, commitHash: hash } = parsed.data;
     await ensureUser(w);
     const { rows } = await query<{ id: string; ts: Date }>(
       `INSERT INTO orders (wallet, gpu_type, commit_hash, status)
@@ -72,11 +75,17 @@ sessionRouter.post(
       res.status(400).json({ error: "validation_failed", issues: parsed.error.issues });
       return;
     }
-    const { wallet: w, priceMicro, qty, secret } = parsed.data;
+    const w = (req as SessionRequest).sessionWallet ?? parsed.data.wallet;
+    const { priceMicro, qty, secret } = parsed.data;
 
-    const { rows } = await query<{ commit_hash: string; status: string }>(
-      `SELECT commit_hash, status FROM orders WHERE id = $1 AND wallet = $2`,
-      [String(req.params.id), w],
+    const id = String(req.params.id);
+    const { rows } = await query<{
+      commit_hash: string;
+      status: string;
+      gpu_type: string;
+    }>(
+      `SELECT commit_hash, status, gpu_type FROM orders WHERE id = $1 AND wallet = $2`,
+      [id, w],
     );
     if (rows.length === 0) {
       res.status(404).json({ error: "order not found" });
@@ -94,12 +103,21 @@ sessionRouter.post(
       return;
     }
 
-    // Mark revealed. price/qty are intentionally NOT stored.
+    // Mark revealed and record an EPHEMERAL matching intent. price/qty live in
+    // order_intents only for the batch window; the matching engine deletes them
+    // on settlement, so they never persist in a public-safe table.
     await query(
       `UPDATE orders SET revealed = TRUE, status = 'revealed' WHERE id = $1 AND wallet = $2`,
-      [String(req.params.id), w],
+      [id, w],
     );
-    res.json({ id: String(req.params.id), status: "revealed", phase: "REVEALED" });
+    await query(
+      `INSERT INTO order_intents (order_id, wallet, gpu_type, price_micro, qty)
+       VALUES ($1, $2, $3, $4, $5)
+       ON CONFLICT (order_id) DO UPDATE
+         SET price_micro = EXCLUDED.price_micro, qty = EXCLUDED.qty`,
+      [id, w, rows[0].gpu_type, priceMicro, qty],
+    );
+    res.json({ id, status: "revealed", phase: "REVEALED" });
   }),
 );
 
@@ -107,15 +125,16 @@ sessionRouter.post(
 sessionRouter.post(
   "/session/orders/:id/cancel",
   asyncHandler(async (req, res) => {
-    const w = wallet.safeParse(req.body?.wallet);
-    if (!w.success) {
+    const bodyW = wallet.safeParse(req.body?.wallet);
+    const w = (req as SessionRequest).sessionWallet ?? (bodyW.success ? bodyW.data : null);
+    if (!w) {
       res.status(400).json({ error: "valid wallet required" });
       return;
     }
     const { rowCount } = await query(
       `UPDATE orders SET status = 'cancelled'
        WHERE id = $1 AND wallet = $2 AND status IN ('committed','revealed')`,
-      [String(req.params.id), w.data],
+      [String(req.params.id), w],
     );
     if (!rowCount) {
       res.status(404).json({ error: "order not found or not cancellable" });

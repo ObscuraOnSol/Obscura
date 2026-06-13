@@ -4,17 +4,16 @@ import { z } from "zod";
 
 import { query } from "../db/index.ts";
 import { asyncHandler } from "../lib/async.ts";
-
-export const authRouter = Router();
+import { siwsStatement, verifySiws } from "../lib/siws.ts";
+import { signSession } from "../lib/session.ts";
 
 /**
- * Sign-In-With-Solana (SIWS). V1 scaffold:
- *  - POST /api/auth/nonce  -> issue a single-use nonce
- *  - POST /api/auth/verify -> consume nonce + (TODO) verify ed25519 signature
- *
- * Signature verification against the wallet's public key is intentionally
- * stubbed — wire @solana/web3.js / tweetnacl in here, then mint a short-TTL JWT.
+ * Sign-In-With-Solana (SIWS):
+ *  - POST /api/auth/nonce  -> issue a single-use nonce + the message to sign
+ *  - POST /api/auth/verify -> verify the ed25519 signature, consume the nonce,
+ *                             upsert the user, and return a short-TTL session token
  */
+export const authRouter = Router();
 
 // POST /api/auth/nonce
 authRouter.post(
@@ -22,15 +21,12 @@ authRouter.post(
   asyncHandler(async (_req, res) => {
     const nonce = randomBytes(16).toString("hex");
     await query("INSERT INTO auth_nonces (nonce) VALUES ($1)", [nonce]);
-    res.json({
-      nonce,
-      statement: `Sign in to Obscura — Compute in the dark.\nNonce: ${nonce}`,
-    });
+    res.json({ nonce, statement: siwsStatement(nonce) });
   }),
 );
 
 const verifySchema = z.object({
-  wallet: z.string().min(32),
+  wallet: z.string().regex(/^[1-9A-HJ-NP-Za-km-z]{32,44}$/, "invalid Solana address"),
   nonce: z.string().length(32),
   signature: z.string().min(1),
 });
@@ -44,27 +40,35 @@ authRouter.post(
       res.status(400).json({ error: "validation_failed", issues: parsed.error.issues });
       return;
     }
-    const { wallet, nonce } = parsed.data;
+    const { wallet, nonce, signature } = parsed.data;
 
-    // Consume the nonce atomically (single-use).
-    const { rowCount } = await query(
-      "UPDATE auth_nonces SET consumed = TRUE, wallet = $2 WHERE nonce = $1 AND consumed = FALSE",
-      [nonce, wallet],
+    // Nonce must exist and be unconsumed.
+    const { rows } = await query<{ nonce: string }>(
+      "SELECT nonce FROM auth_nonces WHERE nonce = $1 AND consumed = FALSE",
+      [nonce],
     );
-    if (!rowCount) {
+    if (rows.length === 0) {
       res.status(401).json({ error: "nonce invalid or already used" });
       return;
     }
 
-    // TODO: verify ed25519 signature of `statement` against `wallet` here.
+    // Real ed25519 verification of the signed statement.
+    if (!verifySiws(wallet, nonce, signature)) {
+      res.status(401).json({ error: "signature verification failed" });
+      return;
+    }
 
+    // Consume the nonce (single-use) and upsert the user.
+    await query(
+      "UPDATE auth_nonces SET consumed = TRUE, wallet = $2 WHERE nonce = $1",
+      [nonce, wallet],
+    );
     await query(
       `INSERT INTO users (wallet, last_signed_in) VALUES ($1, now())
        ON CONFLICT (wallet) DO UPDATE SET last_signed_in = now()`,
       [wallet],
     );
 
-    // TODO: mint short-TTL JWT session token.
-    res.json({ wallet, session: "stubbed-jwt", note: "signature verification not yet wired" });
+    res.json({ wallet, session: signSession(wallet) });
   }),
 );

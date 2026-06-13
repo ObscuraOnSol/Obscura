@@ -10,10 +10,21 @@ export interface SessionOrder {
   ts: string;
 }
 
+// SIWS session token, set by the SessionProvider after sign-in. When present,
+// it authenticates write requests (the backend derives the wallet from it).
+let authToken: string | null = null;
+export function setAuthToken(token: string | null) {
+  authToken = token;
+}
+
 async function call<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     ...init,
-    headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
+    headers: {
+      "Content-Type": "application/json",
+      ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+      ...(init?.headers ?? {}),
+    },
   });
   const body = (await res.json().catch(() => ({}))) as Record<string, unknown>;
   if (!res.ok) {
@@ -93,4 +104,55 @@ export const ordersApi = {
     call<{ orders: SessionOrder[] }>(
       `/api/session/orders?wallet=${encodeURIComponent(wallet)}`,
     ),
+};
+
+export interface ApiKey {
+  id: string;
+  masked: string;
+  tier: string;
+  createdAt: string;
+  revokedAt: string | null;
+}
+
+export const keysApi = {
+  create: (wallet: string) =>
+    call<{ apiKey: string; id: string; tier: string; note: string }>(
+      "/api/session/keys",
+      { method: "POST", body: JSON.stringify({ wallet }) },
+    ),
+  list: (wallet: string) =>
+    call<{ keys: ApiKey[] }>(
+      `/api/session/keys?wallet=${encodeURIComponent(wallet)}`,
+    ),
+  revoke: (wallet: string, id: string) =>
+    call<{ id: string; revoked: boolean }>("/api/session/keys/revoke", {
+      method: "POST",
+      body: JSON.stringify({ wallet, id }),
+    }),
+};
+
+export const authApi = {
+  nonce: () =>
+    call<{ nonce: string; statement: string }>("/api/auth/nonce", {
+      method: "POST",
+      body: "{}",
+    }),
+  verify: (wallet: string, nonce: string, signature: string) =>
+    call<{ wallet: string; session: string }>("/api/auth/verify", {
+      method: "POST",
+      body: JSON.stringify({ wallet, nonce, signature }),
+    }),
+};
+
+export const providersApi = {
+  register: (
+    wallet: string,
+    gpuType: string,
+    capacity: number,
+    stakeAmount: number,
+  ) =>
+    call<{ id: string; status: string }>("/api/providers", {
+      method: "POST",
+      body: JSON.stringify({ wallet, gpuType, capacity, stakeAmount }),
+    }),
 };

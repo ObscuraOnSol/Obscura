@@ -1,11 +1,16 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { Providers } from "@/components/providers";
+
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://obscura.compute";
+const OG_DESCRIPTION =
+  "A dark pool for AI/GPU compute on Solana. No one sees what you buy, what you pay, or when.";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://obscura.compute"),
+  metadataBase: new URL(SITE_URL),
   title: {
-    default: "Obscura — Compute in the dark.",
-    template: "%s — Obscura",
+    default: "Obscura | Compute in the dark.",
+    template: "%s | Obscura",
   },
   description:
     "A dark pool for AI/GPU compute on Solana. Encrypted order books, commit-reveal submission, ZK-matched batch auctions, USDC settlement. Built for AI agents and developers.",
@@ -20,12 +25,26 @@ export const metadata: Metadata = {
     "$OBSC",
   ],
   openGraph: {
-    title: "Obscura — Compute in the dark.",
-    description:
-      "A dark pool for AI/GPU compute on Solana. No one sees what you buy, what you pay, or when.",
-    url: "https://obscura.compute",
+    title: "Obscura | Compute in the dark.",
+    description: OG_DESCRIPTION,
+    url: SITE_URL,
     siteName: "Obscura",
     type: "website",
+    images: [
+      {
+        url: "/banner.png",
+        width: 2172,
+        height: 724,
+        alt: "Obscura | Compute in the dark.",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Obscura | Compute in the dark.",
+    description: OG_DESCRIPTION,
+    images: ["/banner.png"],
+    site: "@obscuraonsol",
   },
   icons: { icon: "/logo.png" },
 };
@@ -38,7 +57,7 @@ export default function RootLayout({
       <body
         className="font-sans antialiased"
       >
-        {children}
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

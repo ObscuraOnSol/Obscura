@@ -1,22 +1,24 @@
+import Link from "next/link";
 import Image from "next/image";
 import {
+  ArrowRight,
   Lock,
+  Unlock,
   Boxes,
+  Coins,
   ShieldCheck,
   Bot,
   Activity,
   EyeOff,
   ExternalLink,
+  Flame,
+  TrendingUp,
+  Zap,
 } from "lucide-react";
 
+import { Button } from "@/components/ui/button";
 import { Wordmark } from "@/components/logo";
 import { SiteHeader } from "@/components/site-header";
-import {
-  ComingSoonProvider,
-  ComingSoonButton,
-  ComingSoonLink,
-  CABadge,
-} from "@/components/coming-soon";
 import { ClickEffects } from "@/components/click-effects";
 import {
   FadeIn,
@@ -40,17 +42,17 @@ const CLEARING = [
 ];
 
 const PHASES = [
-  { key: "COMMIT", label: "Committed", note: "Order hashed client-side — nothing visible on-chain." },
-  { key: "REVEAL", label: "Revealed", note: "Price and quantity enter the next batch auction." },
-  { key: "MATCH", label: "Matched", note: "ZK-verified batch auction clears in ~45 seconds." },
-  { key: "SETTLE", label: "Settled", note: "USDC released from escrow to counterparties." },
+  { key: "COMMIT", label: "Committed", note: "Order hashed client-side, nothing visible on-chain.", icon: Lock },
+  { key: "REVEAL", label: "Revealed", note: "Price and quantity enter the next batch auction.", icon: Unlock },
+  { key: "MATCH", label: "Matched", note: "ZK-verified batch auction clears in ~45 seconds.", icon: Boxes },
+  { key: "SETTLE", label: "Settled", note: "USDC released from escrow to counterparties.", icon: Coins },
 ];
 
 const FEATURES = [
   {
     icon: Lock,
-    title: "Commit–reveal orders",
-    body: "Orders are hashed before submission. Size, price, and timing never hit the public mempool — no front-running your compute buys.",
+    title: "Commit-reveal orders",
+    body: "Orders are hashed before submission. Size, price, and timing never hit the public mempool, preventing front-running of your compute buys.",
   },
   {
     icon: Boxes,
@@ -60,12 +62,12 @@ const FEATURES = [
   {
     icon: ShieldCheck,
     title: "Screened settlement",
-    body: "Every external exit carries a clean-provenance association-set proof. Privacy without naked wallet layering — a microstructure tool, not an obfuscator.",
+    body: "Every external exit carries a clean-provenance association-set proof. Privacy without naked wallet layering; a microstructure tool, not an obfuscator.",
   },
   {
     icon: Bot,
     title: "Agent-native API",
-    body: "Token-gated programmatic access via SAS passports. Agents submit, list, and cancel orders with an X-API-Key. No KYC — wallet is identity.",
+    body: "Token-gated programmatic access via SAS passports. Agents submit, list, and cancel orders with an X-API-Key. No KYC; wallet is identity.",
   },
 ];
 
@@ -77,14 +79,14 @@ const FOOTER_LINKS = {
     ["Agent API", "/agent"],
   ],
   community: [
-    ["Telegram", "https://t.me/obscurasol", true],
-    ["X (Twitter)", "https://x.com/obscurasol", true],
+    ["Telegram", "https://t.me/obscurasolana", true],
+    ["X (Twitter)", "https://x.com/obscuraonsol?s=21", true],
     ["GitHub", "https://github.com/ObscuraOnSol", true],
   ],
   resources: [
-    ["Whitepaper", "#", true],
-    ["Roadmap", "#", true],
-    ["Documentation", "#", true],
+    ["Whitepaper", "/whitepaper", false],
+    ["Roadmap", "/roadmap", false],
+    ["Documentation", "/docs", false],
   ],
 } as const;
 
@@ -92,7 +94,6 @@ const FOOTER_LINKS = {
 
 export default function Home() {
   return (
-    <ComingSoonProvider>
     <div className="relative min-h-screen overflow-x-clip bg-background">
       <ClickEffects />
       {/* Hero background image covering header + hero */}
@@ -121,7 +122,6 @@ export default function Home() {
         <SiteFooter />
       </div>
     </div>
-    </ComingSoonProvider>
   );
 }
 
@@ -138,7 +138,7 @@ function Hero() {
             <h1 className="max-w-4xl text-5xl font-bold leading-[1.05] tracking-tight sm:text-6xl md:text-7xl lg:text-8xl">
               Compute
               <br />
-              <TextScramble text="in the dark." className="text-primary" />
+              <TextScramble text="in the dark." className="text-foreground" />
             </h1>
           </HeroItem>
 
@@ -151,14 +151,18 @@ function Hero() {
           </HeroItem>
 
           <HeroItem>
-            <div className="mt-8">
-              <CABadge />
-            </div>
-          </HeroItem>
-
-          <HeroItem>
-            <div className="mt-8 flex justify-center">
-              <ComingSoonButton size="lg">Coming soon</ComingSoonButton>
+            <div className="mt-10 flex flex-col items-center gap-3 sm:flex-row">
+              <Link href="/dashboard">
+                <Button size="lg" variant="white">
+                  Launch app
+                  <ArrowRight className="ml-1.5 h-4 w-4" />
+                </Button>
+              </Link>
+              <Link href="/marketplace">
+                <Button size="lg" variant="outline">
+                  View live prices
+                </Button>
+              </Link>
             </div>
           </HeroItem>
 
@@ -218,17 +222,20 @@ function PhaseStrip() {
         <SectionHeading
           eyebrow="The order lifecycle"
           title="Every order makes its phase explicit"
-          sub="The UI always shows whether an order is committed, revealed, matched, or settled — so you know exactly what is, and isn't, yet public."
+          sub="The UI always shows whether an order is committed, revealed, matched, or settled, so you know exactly what is, and isn't, yet public."
         />
       </FadeIn>
       <StaggerContainer className="mt-14 grid gap-4 sm:grid-cols-2 lg:grid-cols-4" staggerDelay={0.08}>
         {PHASES.map((p, i) => (
           <StaggerItem key={p.key}>
             <div className="group relative h-full overflow-hidden rounded-xl border border-border bg-card/40 p-6 transition-colors hover:border-primary/30">
-              <div className="data text-[11px] uppercase tracking-[0.2em] text-primary">
-                0{i + 1} / {p.key}
+              <div className="flex items-center justify-between">
+                <div className="data text-[11px] uppercase tracking-[0.2em] text-primary">
+                  0{i + 1} / {p.key}
+                </div>
+                <p.icon className="h-4 w-4 text-muted-foreground/60 transition-colors group-hover:text-primary" />
               </div>
-              <div className="mt-3 text-xl font-semibold">{p.label}</div>
+              <div className="mt-4 text-xl font-semibold">{p.label}</div>
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{p.note}</p>
               <div className="pointer-events-none absolute inset-x-0 -bottom-px h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
             </div>
@@ -239,7 +246,7 @@ function PhaseStrip() {
         <div className="mt-6">
           <Frame
             src="/photo_2026-06-13_18-00-11.jpg"
-            alt="Obscura order lifecycle — commit, reveal, match, settle"
+            alt="Obscura order lifecycle (commit, reveal, match, settle)"
           />
         </div>
       </FadeIn>
@@ -254,9 +261,9 @@ function ClearingPrices() {
     <section className="container py-24">
       <FadeIn>
         <SectionHeading
-          eyebrow="Real-time price discovery"
-          title="Live GPU clearing prices"
-          sub="A clearing-price oracle for H100, A100, RTX 4090 and newer parts — peer-to-peer auction pricing, materially cheaper than hyperscalers."
+          eyebrow="Clearing prices"
+          title="Monospace price feed"
+          sub="A clearing-price oracle for H100, A100, RTX 4090 and newer parts, featuring peer-to-peer auction pricing, materially cheaper than hyperscalers."
         />
       </FadeIn>
       <StaggerContainer className="mt-14 grid gap-px overflow-hidden rounded-xl border border-border bg-border sm:grid-cols-2 lg:grid-cols-4" staggerDelay={0.06}>
@@ -281,11 +288,6 @@ function ClearingPrices() {
           </StaggerItem>
         ))}
       </StaggerContainer>
-      <FadeIn delay={0.3}>
-        <p className="data mt-4 text-center text-xs text-muted-foreground/50">
-          Indicative figures · production data from GET /api/market/prices
-        </p>
-      </FadeIn>
       <FadeIn delay={0.2}>
         <div className="mt-10">
           <Frame
@@ -305,9 +307,9 @@ function Features() {
     <section className="container py-24">
       <FadeIn>
         <SectionHeading
-          eyebrow="Why Obscura"
-          title="Dark-pool mechanics, rebuilt on Solana"
-          sub="Fully on-chain, privacy-preserving by default, AI-agent-native. The legitimate market-microstructure approach — never an obfuscation service."
+          eyebrow="Privacy Showcase"
+          title="Compute in the dark"
+          sub="Fully on-chain, privacy-preserving by default, AI-agent-native. The legitimate market-microstructure approach, not an obfuscation service."
         />
       </FadeIn>
       <StaggerContainer className="mt-14 grid gap-4 md:grid-cols-2" staggerDelay={0.1}>
@@ -335,12 +337,12 @@ function Features() {
 
 function Flywheel() {
   const steps = [
-    "Protocol earns fees",
-    "Buys back & burns $OBSC",
-    "Pays USDC yield to stakers",
-    "Node operators lock $OBSC",
-    "Agents auto-buy for API access",
-    "More compute → more fees",
+    { text: "Protocol earns fees", icon: Coins },
+    { text: "Buys back & burns $OBSC", icon: Flame },
+    { text: "Pays USDC yield to stakers", icon: TrendingUp },
+    { text: "Node operators lock $OBSC", icon: ShieldCheck },
+    { text: "Agents auto-buy for API access", icon: Bot },
+    { text: "More compute → more fees", icon: Zap },
   ];
   return (
     <section className="container py-24">
@@ -355,11 +357,12 @@ function Flywheel() {
             />
             <StaggerContainer className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-3" staggerDelay={0.06}>
               {steps.map((s, i) => (
-                <StaggerItem key={s}>
-                  <li className="flex items-center gap-3 rounded-lg border border-border bg-background/50 px-4 py-3 transition-colors hover:border-primary/20">
-                    <span className="data text-xs text-primary">0{i + 1}</span>
-                    <span className="text-sm">{s}</span>
-                  </li>
+                <StaggerItem key={s.text}>
+                  <div className="flex items-center gap-3 rounded-lg border border-border bg-background/50 px-4 py-3 transition-colors hover:border-primary/20">
+                    <span className="data text-xs text-primary/60">0{i + 1}</span>
+                    <s.icon className="h-4 w-4 text-primary shrink-0" />
+                    <span className="text-sm">{s.text}</span>
+                  </div>
                 </StaggerItem>
               ))}
             </StaggerContainer>
@@ -393,7 +396,7 @@ function CTA() {
             </FadeIn>
             <FadeIn delay={0.1}>
               <h2 className="mt-6 text-4xl font-bold tracking-tight md:text-5xl">
-                Buy compute. <span className="text-primary">Leave no trace.</span>
+                Buy compute. <span className="text-muted-foreground">Leave no trace.</span>
               </h2>
             </FadeIn>
             <FadeIn delay={0.2}>
@@ -403,9 +406,13 @@ function CTA() {
               </p>
             </FadeIn>
             <FadeIn delay={0.3}>
-              <div className="mt-8 flex flex-col items-center gap-5">
-                <ComingSoonButton size="lg">Coming soon</ComingSoonButton>
-                <CABadge />
+              <div className="mt-8 flex justify-center">
+                <Link href="/dashboard">
+                  <Button size="lg" variant="white">
+                    Launch app
+                    <ArrowRight className="ml-1.5 h-4 w-4" />
+                  </Button>
+                </Link>
               </div>
             </FadeIn>
           </div>
@@ -441,7 +448,6 @@ function SiteFooter() {
               A dark pool for GPU compute on Solana. Encrypted order books,
               batch auctions, USDC-settled.
             </p>
-            <CABadge className="mt-5" />
           </StaggerItem>
 
           {/* Product links */}
@@ -450,11 +456,14 @@ function SiteFooter() {
               Product
             </h4>
             <ul className="mt-4 space-y-3">
-              {FOOTER_LINKS.product.map(([label]) => (
+              {FOOTER_LINKS.product.map(([label, href]) => (
                 <li key={label}>
-                  <ComingSoonLink className="text-sm text-muted-foreground transition-colors hover:text-foreground">
+                  <Link
+                    href={href}
+                    className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+                  >
                     {label}
-                  </ComingSoonLink>
+                  </Link>
                 </li>
               ))}
             </ul>
@@ -488,17 +497,26 @@ function SiteFooter() {
               Resources
             </h4>
             <ul className="mt-4 space-y-3">
-              {FOOTER_LINKS.resources.map(([label, href]) => (
+              {FOOTER_LINKS.resources.map(([label, href, isExternal]) => (
                 <li key={label}>
-                  <a
-                    href={href as string}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
-                  >
-                    {label}
-                    <ExternalLink className="h-3 w-3 opacity-40" />
-                  </a>
+                  {isExternal ? (
+                    <a
+                      href={href as string}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+                    >
+                      {label}
+                      <ExternalLink className="h-3 w-3 opacity-40" />
+                    </a>
+                  ) : (
+                    <Link
+                      href={href}
+                      className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+                    >
+                      {label}
+                    </Link>
+                  )}
                 </li>
               ))}
             </ul>
@@ -540,6 +558,7 @@ function Frame({
       )}
     >
       <Image src={src} alt={alt} fill sizes="100vw" className="object-cover" />
+      {/* aperture corner ticks, the green flick */}
       <span className="pointer-events-none absolute left-3 top-3 h-4 w-4 border-l border-t border-primary/40" />
       <span className="pointer-events-none absolute right-3 top-3 h-4 w-4 border-r border-t border-primary/40" />
       <span className="pointer-events-none absolute bottom-3 left-3 h-4 w-4 border-b border-l border-primary/40" />
@@ -567,14 +586,14 @@ function PrivacyShowcase() {
         <StaggerItem>
           <Frame
             src="/photo_2026-06-13_18-00-10.jpg"
-            alt="Obscura privacy architecture — private by default"
+            alt="Obscura privacy architecture, private by default"
             ratio="aspect-square"
           />
         </StaggerItem>
         <StaggerItem>
           <Frame
             src="/photo_2026-06-13_18-00-13.jpg"
-            alt="Obscura — private GPU market"
+            alt="Obscura private GPU market"
             ratio="aspect-square"
           />
         </StaggerItem>
@@ -591,7 +610,7 @@ function BrandBand() {
       <ScaleIn>
         <Frame
           src="/photo_2026-06-13_18-00-14.jpg"
-          alt="Obscura — compute in the dark"
+          alt="Obscura compute in the dark"
           ratio="aspect-[21/9]"
         />
       </ScaleIn>
