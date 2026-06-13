@@ -160,8 +160,16 @@ function Hero() {
           </HeroItem>
 
           <HeroItem>
-            <p className="data mt-8 text-xs text-muted-foreground/60">
-              No wallet required to browse · USDC-settled from day one
+            <p className="data mt-8 flex flex-wrap items-center justify-center gap-1.5 text-xs text-muted-foreground/60">
+              No wallet required to browse ·
+              <Image
+                src="/usdc_logo.png"
+                alt="USDC"
+                width={14}
+                height={14}
+                className="inline-block rounded-full"
+              />
+              USDC-settled from day one
             </p>
           </HeroItem>
         </HeroStagger>
