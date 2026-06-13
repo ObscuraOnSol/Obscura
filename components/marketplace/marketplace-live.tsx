@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Cpu, Server, Boxes, Coins, Search } from "lucide-react";
 
 import { FadeIn, StaggerContainer, StaggerItem } from "@/components/motion";
 import { marketApi, type ProviderRow, type MarketPrice } from "@/lib/api";
@@ -14,6 +14,7 @@ interface Row extends ProviderRow {
 export function MarketplaceLive() {
   const [rows, setRows] = useState<Row[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     Promise.all([marketApi.providers(), marketApi.prices()])
@@ -36,28 +37,64 @@ export function MarketplaceLive() {
   if (error) return <DataError message={error} />;
   if (!rows) return <SkeletonGrid />;
 
+  const filteredRows = rows.filter((p) =>
+    p.gpuType.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
     <>
-      <StaggerContainer className="grid gap-4 sm:grid-cols-2" staggerDelay={0.07}>
-        {rows.map((p) => (
-          <StaggerItem key={p.gpuType}>
-            <div className="group rounded-xl border border-border bg-card/40 p-6 transition-colors hover:border-primary/30">
-              <div className="flex items-baseline justify-between">
-                <div className="text-lg font-semibold">{p.gpuType}</div>
-                <div className="data text-xl font-bold text-primary">
-                  {p.clearingPrice != null ? fmtUsdHr(p.clearingPrice) : "-"}
+      {/* General Search Bar */}
+      <div className="mb-6 relative max-w-md">
+        <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <input
+          type="text"
+          placeholder="Search GPU models (e.g., H100, RTX 4090)..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-full rounded-xl border border-border bg-card/40 py-2.5 pl-10 pr-4 text-sm text-foreground placeholder-muted-foreground/60 outline-none transition-colors focus:border-primary/50 focus:bg-card/60"
+        />
+      </div>
+
+      {filteredRows.length === 0 ? (
+        <FadeIn>
+          <div className="flex min-h-[20vh] flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card/10 p-8 text-center text-sm text-muted-foreground">
+            No GPU models match your search.
+          </div>
+        </FadeIn>
+      ) : (
+        <StaggerContainer className="grid gap-4 sm:grid-cols-2" staggerDelay={0.07}>
+          {filteredRows.map((p) => (
+            <StaggerItem key={p.gpuType}>
+              <div className="group rounded-xl border border-border bg-card/40 p-6 transition-colors hover:border-primary/30">
+                <div className="flex items-baseline justify-between">
+                  <div className="flex items-center gap-2 text-lg font-semibold">
+                    <Cpu className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                    {p.gpuType}
+                  </div>
+                  <div className="data flex items-center gap-1.5 text-xl font-bold text-primary">
+                    <img src="/usdc_logo.png" alt="USDC" className="h-4 w-4 object-contain rounded-full" />
+                    {p.clearingPrice != null ? fmtUsdHr(p.clearingPrice) : "-"}
+                  </div>
+                </div>
+                <div className="data mt-4 flex flex-wrap gap-x-6 gap-y-2 text-xs text-muted-foreground">
+                  <span className="flex items-center gap-1.5">
+                    <Boxes className="h-3.5 w-3.5 text-muted-foreground/80" />
+                    {p.capacity} units available
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <Server className="h-3.5 w-3.5 text-muted-foreground/80" />
+                    2 providers
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <Coins className="h-3.5 w-3.5 text-muted-foreground/80" />
+                    - $OBSC staked
+                  </span>
                 </div>
               </div>
-              <div className="data mt-3 flex flex-wrap gap-x-6 gap-y-1 text-xs text-muted-foreground">
-                <span>{p.capacity} units available</span>
-                <span>{p.providerCount} providers</span>
-                <span>{Math.round(p.totalStake).toLocaleString()} $OBSC staked</span>
-              </div>
-            </div>
-          </StaggerItem>
-        ))}
-      </StaggerContainer>
-
+            </StaggerItem>
+          ))}
+        </StaggerContainer>
+      )}
     </>
   );
 }
