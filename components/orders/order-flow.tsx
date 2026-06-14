@@ -163,6 +163,16 @@ export function OrderFlow() {
   useEffect(() => setSecret(randomSecretHex()), []);
 
   useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const urlGpuType = params.get("gpuType");
+      if (urlGpuType) {
+        setGpuType(urlGpuType);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
     setLoadingGpus(true);
     marketApi.providers()
       .then(({ providers }) => {

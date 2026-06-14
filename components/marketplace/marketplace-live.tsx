@@ -26,6 +26,7 @@ import { HARDWARE_LIST } from "@/lib/hardware";
 import confetti from "canvas-confetti";
 
 import { FadeIn, StaggerContainer, StaggerItem } from "@/components/motion";
+import Link from "next/link";
 import { marketApi, providersApi, type ProviderRow } from "@/lib/api";
 import { fmtUsdHr, shortHash } from "@/lib/utils";
 import { useWallet } from "@/lib/wallet";
@@ -188,7 +189,10 @@ export function MarketplaceLive() {
 
                   return (
                     <StaggerItem key={p.id}>
-                      <div className="group rounded-xl border border-border bg-card/40 p-6 transition-colors hover:border-primary/30">
+                      <Link
+                        href={`/orders?gpuType=${encodeURIComponent(p.gpuType)}`}
+                        className="group block rounded-xl border border-border bg-card/40 p-6 transition-all hover:border-primary/30 hover:bg-card/50 cursor-pointer text-left"
+                      >
                         <div className="flex items-baseline justify-between">
                           <div>
                             <div className="flex items-center gap-2 text-lg font-semibold">
@@ -231,7 +235,7 @@ export function MarketplaceLive() {
                             {p.stakeAmount} USDC collateral
                           </span>
                         </div>
-                      </div>
+                      </Link>
                     </StaggerItem>
                   );
                 })}
@@ -848,7 +852,7 @@ function ProvideGpuForm({ onRegistered }: { onRegistered: () => void }) {
           <div className="relative w-full max-w-md rounded-2xl border border-border/80 bg-[#0c0d10] p-8 shadow-2xl flex flex-col items-center text-center text-foreground animate-in zoom-in-95 duration-200">
             {/* Green glowing circle with check icon */}
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 mb-6 shadow-[0_0_20px_rgba(16,185,129,0.1)]">
-              <CheckCircle2 className="h-8 w-8 text-emerald-400 animate-bounce" />
+              <CheckCircle2 className="h-8 w-8 text-emerald-400" />
             </div>
 
             <h3 className="text-xl font-bold text-foreground tracking-tight">
