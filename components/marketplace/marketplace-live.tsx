@@ -34,6 +34,53 @@ import { performUsdcTransfer, performUsdcSplitTransfer } from "@/lib/solana";
 const OBSCURA_COLLATERAL_WALLET = "4RWwwY8LowKYSrzE9t8Z5Tn15rLH6D1Uz1z5NvxHzPj6";
 const OBSCURA_SERVICE_WALLET = "FHMr5nLShb3AxFmdqS2dEwdseKFvaic6vyFcCm3Hm6Jn";
 
+function getBrandLogo(brand: string, className = "h-3.5 w-3.5") {
+  const b = brand.toUpperCase();
+  if (b === "NVIDIA") {
+    return (
+      <svg viewBox="0 0 24 24" className={`${className} text-[#76B900]`} fill="currentColor">
+        <path d="M23.997 12a11.996 11.996 0 01-11.995 12c-4.966 0-9.255-3.01-11.085-7.293L4.9 14.8c1.378 2.052 3.822 3.4 6.6 3.4 3.93 0 7.15-2.936 7.15-6.52s-3.22-6.52-7.15-6.52c-2.6 0-4.9 1.22-6.313 3.1l-3.8-1.5C3.292 3.167 7.373 0 12.002 0c6.626 0 11.995 5.373 11.995 12z" />
+      </svg>
+    );
+  }
+  if (b === "AMD") {
+    return (
+      <svg viewBox="0 0 24 24" className={`${className} text-[#ED1C24]`} fill="currentColor">
+        <path d="M12 0L1.5 10.5V24h12V13.5h7.5L24 10.5V0H12zm9 9h-9v9H9V9H3V3h18v6z" />
+      </svg>
+    );
+  }
+  if (b === "INTEL") {
+    return (
+      <svg viewBox="0 0 24 24" className={`${className} text-[#0071C5]`} fill="currentColor">
+        <path d="M21.412 17.039c.07-.492.105-1.04.105-1.638v-6.223h-2.14v6.188c0 .878-.457 1.353-1.336 1.353h-3.69c-.879 0-1.353-.475-1.353-1.353V9.178H10.86v6.223c0 .598.035 1.146.105 1.638H1.723V6.786h2.145V14.65c0 .878.474 1.353 1.353 1.353h3.69c.879 0 1.353-.475 1.353-1.353V6.786H12.41V14.65c0 .878.475 1.353 1.353 1.353h3.69c.879 0 1.354-.475 1.354-1.353v-7.864h2.144V14.65c0 .878.475 1.353 1.354 1.353h1.16v-2.073h-1.16v.72c0 .878-.475 1.353-1.354 1.353h-3.69c-.879 0-1.353-.475-1.353-1.353v-5.263h2.14v5.228c0 .878.457 1.353 1.336 1.353h3.69c.879 0 1.353-.475 1.353-1.353v-5.228h2.14v5.263z" />
+      </svg>
+    );
+  }
+  if (b === "APPLE") {
+    return (
+      <svg viewBox="0 0 24 24" className={`${className} text-[#A2AAAD]`} fill="currentColor">
+        <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 4.17c.66-.81 1.11-1.93.99-3.06-.96.04-2.13.64-2.82 1.45-.6.69-1.12 1.83-.98 2.94 1.07.08 2.15-.52 2.81-1.33z" />
+      </svg>
+    );
+  }
+  if (b === "DELL") {
+    return (
+      <svg viewBox="0 0 24 24" className={`${className} text-[#0076c0]`} fill="currentColor">
+        <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0m.018 20.315c-4.577 0-8.298-3.72-8.298-8.297 0-4.578 3.72-8.299 8.298-8.299 4.577 0 8.297 3.72 8.297 8.299 0 4.577-3.72 8.297-8.297 8.297M8.344 7.643H5.976v8.697h2.61c2.197 0 3.32-.976 3.32-2.583 0-1.296-.64-2.127-1.871-2.45v-.063c1.037-.367 1.579-1.127 1.579-2.274 0-1.428-.971-2.316-2.582-2.316v-.011zm.703 3.652c.703 0 1.135-.304 1.135-.98 0-.668-.426-.957-1.135-.957h-1.07v1.937h1.07zm.052 3.593c.792 0 1.282-.338 1.282-1.035 0-.712-.49-1.011-1.282-1.011h-1.122v2.046H9.1zm3.896.452h3.914v-1.464H14.88v-2.015h1.996v-1.439H14.88V9.106h2.146V7.643H12.99v8.697h.006zm5.836 0h2.645V7.643h-1.614v7.195H17.84zm3.084 0H22v-8.697h-1.614v7.195H20.92v.006z" />
+      </svg>
+    );
+  }
+  if (b === "HP") {
+    return (
+      <svg viewBox="0 0 24 24" className={`${className} text-[#0096D6]`} fill="currentColor">
+        <path d="M12 0C5.372 0 0 5.372 0 12s5.372 12 12 12 12-5.372 12-12S18.628 0 12 0zm.018 20.315c-4.577 0-8.298-3.72-8.298-8.297 0-4.578 3.72-8.299 8.298-8.299 4.577 0 8.297 3.72 8.297 8.299 0 4.577-3.72 8.297-8.297 8.297M8.645 19.385l.775-3.32h1.258c1.92 0 2.85-1.012 3.125-2.2a2.38 2.38 0 00-2.22-2.915H9.684l.872-3.75h1.745l-.407 1.75h1.455c1.92 0 2.85-1.012 3.125-2.2a2.38 2.38 0 00-2.22-2.915h-3.49L9.123 18.89c-.1.43-.497.77-1.239.77H7.4l-.565 2.43c-.07.288.15.562.443.562l1.367-.007v-.005l.001-.002-.001-.263z" />
+      </svg>
+    );
+  }
+  return <Cpu className={`${className} text-primary`} />;
+}
+
 interface Row {
   id: string;
   wallet: string;
@@ -677,27 +724,30 @@ function ProvideGpuForm({ onRegistered }: { onRegistered: () => void }) {
                 />
               </div>
 
-              {/* Advanced Filter Row (Brand, Type, Year) */}
-              <div className="grid gap-3 grid-cols-3 text-xs">
-                {/* Brand */}
-                <div className="space-y-1">
-                  <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Brand</span>
-                  <select
-                    value={brandFilter}
-                    onChange={(e) => setBrandFilter(e.target.value)}
-                    className="w-full h-8 rounded-md border border-border bg-background/40 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
-                  >
-                    <option value="All">All Brands</option>
-                    <option value="NVIDIA">NVIDIA</option>
-                    <option value="AMD">AMD</option>
-                    <option value="Intel">Intel</option>
-                    <option value="Apple">Apple</option>
-                    <option value="Dell">Dell</option>
-                    <option value="HP">HP</option>
-                    <option value="Other">Other</option>
-                  </select>
+              {/* Brand Selector with Logos */}
+              <div className="space-y-1.5">
+                <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Brand</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {["All", "NVIDIA", "AMD", "Intel", "Apple", "Dell", "HP", "Other"].map((brand) => (
+                    <button
+                      key={brand}
+                      type="button"
+                      onClick={() => setBrandFilter(brand)}
+                      className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-[10px] font-medium transition-all ${
+                        brandFilter === brand
+                          ? "border-primary bg-primary/10 text-foreground"
+                          : "border-border/50 bg-background/30 hover:border-primary/30 text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      {brand !== "All" && getBrandLogo(brand, "h-3 w-3 shrink-0")}
+                      <span>{brand}</span>
+                    </button>
+                  ))}
                 </div>
+              </div>
 
+              {/* Type and Release Year */}
+              <div className="grid gap-3 grid-cols-2 text-xs">
                 {/* Type */}
                 <div className="space-y-1">
                   <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Type</span>
@@ -755,7 +805,8 @@ function ProvideGpuForm({ onRegistered }: { onRegistered: () => void }) {
                     >
                       <span className="font-semibold text-foreground truncate">{item.name}</span>
                       <div className="flex gap-1.5 mt-1.5 flex-wrap">
-                        <span className="px-1.5 py-0.5 rounded bg-background/60 text-[9px] uppercase tracking-wider border border-border/40 font-mono">
+                        <span className="px-1.5 py-0.5 rounded bg-background/60 text-[9px] uppercase tracking-wider border border-border/40 font-mono flex items-center gap-1">
+                          {getBrandLogo(item.brand, "h-2.5 w-2.5 shrink-0")}
                           {item.brand}
                         </span>
                         <span className="px-1.5 py-0.5 rounded bg-background/60 text-[9px] uppercase tracking-wider border border-border/40 font-mono">
