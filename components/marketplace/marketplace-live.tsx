@@ -57,6 +57,12 @@ export function MarketplaceLive() {
   };
 
   useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("tab") === "provide") {
+        setActiveTab("provide");
+      }
+    }
     refreshList();
   }, []);
 

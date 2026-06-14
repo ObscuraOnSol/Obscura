@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import {
   Lock,
   Eye,
@@ -21,6 +22,7 @@ import {
   Coins,
   Cpu,
   Clock,
+  ArrowUpRight,
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useConnection } from "@solana/wallet-adapter-react";
@@ -316,12 +318,19 @@ export function OrderFlow() {
                 <span className="text-xs text-muted-foreground">Checking marketplace depth...</span>
               </div>
             ) : gpuTypes.length === 0 ? (
-              <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-background/25 p-8 text-center text-xs text-muted-foreground space-y-3">
+              <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-background/25 p-8 text-center text-xs text-muted-foreground space-y-4">
                 <AlertTriangle className="h-6 w-6 text-amber-500 shrink-0 animate-bounce" />
                 <div className="font-semibold text-foreground text-sm">No active GPUs available</div>
                 <p className="text-[11px] text-muted-foreground/70 leading-relaxed max-w-[280px]">
                   There are currently no active GPU nodes listed in the marketplace. Please check back later or list your own GPU capacity as a seller to get started.
                 </p>
+                <Link
+                  href="/marketplace?tab=provide"
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card/60 px-3.5 py-2 text-xs font-semibold text-foreground transition-all hover:bg-card hover:border-primary/40 active:scale-95 shadow-md shadow-black/20"
+                >
+                  List Your GPU Node
+                  <ArrowUpRight className="h-3.5 w-3.5 text-primary" />
+                </Link>
               </div>
             ) : (
               <div className="space-y-4">
