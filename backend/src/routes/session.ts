@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
+import { execSync } from "child_process";
 
 import { query } from "../db/index.ts";
 import { asyncHandler } from "../lib/async.ts";
@@ -179,6 +180,67 @@ sessionRouter.get(
   }),
 );
 
+interface ConnectionDetails {
+  host: string;
+  port: string;
+  username: string;
+  password?: string;
+  webCliUrl: string;
+}
+
+function getDockerConnection(id: string): ConnectionDetails | null {
+  try {
+    // Check if docker is installed and running
+    execSync("docker --version", { stdio: "ignore" });
+  } catch (e) {
+    return null; // Docker not available
+  }
+
+  const containerName = `obscura-node-${id.slice(0, 8)}`;
+
+  try {
+    // Check if container is running
+    const isRunning = execSync(`docker inspect -f '{{.State.Running}}' ${containerName}`, { stdio: "pipe" })
+      .toString()
+      .trim();
+
+    if (isRunning !== "true") {
+      // If it exists but is stopped, start it
+      execSync(`docker start ${containerName}`, { stdio: "ignore" });
+    }
+  } catch (e) {
+    // Container does not exist, let's create and start it
+    try {
+      // Run the container exposing port 22 and 7681 on random host ports
+      execSync(`docker run -d --name ${containerName} -p 22 -p 7681 obscura-gpu-server`, { stdio: "ignore" });
+    } catch (err) {
+      console.error("Failed to run docker container, fallback to env config", err);
+      return null;
+    }
+  }
+
+  try {
+    // Get host port mappings
+    const sshPortOutput = execSync(`docker port ${containerName} 22`, { stdio: "pipe" }).toString().trim();
+    const webPortOutput = execSync(`docker port ${containerName} 7681`, { stdio: "pipe" }).toString().trim();
+
+    // Parse port (matches e.g. "0.0.0.0:32768" or "[::]:32768" or "32768")
+    const sshPort = sshPortOutput.split(":").pop() || "2222";
+    const webPort = webPortOutput.split(":").pop() || "7681";
+
+    return {
+      host: "localhost",
+      port: sshPort,
+      username: "root",
+      password: "obscura",
+      webCliUrl: `http://localhost:${webPort}`,
+    };
+  } catch (e) {
+    console.error("Failed to parse docker ports", e);
+    return null;
+  }
+}
+
 // GET /api/session/orders/:id/connection
 sessionRouter.get(
   "/session/orders/:id/connection",
@@ -192,6 +254,15 @@ sessionRouter.get(
       res.status(404).json({ error: "order not found" });
       return;
     }
+
+    // Try to get dynamic Docker connection if running locally with docker
+    const dockerConn = getDockerConnection(id);
+    if (dockerConn) {
+      res.json(dockerConn);
+      return;
+    }
+
+    // Fallback to static environment variable configurations (useful for Render/remote deploy)
     res.json({
       host: env.sshHost,
       port: env.sshPort,
