@@ -17,6 +17,7 @@ import {
   Flame,
   TrendingUp,
   Zap,
+  Cpu,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -35,6 +36,7 @@ import {
 import { TextScramble } from "@/components/text-scramble";
 import { BlurTextCycle } from "@/components/blur-text-cycle";
 import { ComingSoonModal } from "@/components/coming-soon-modal";
+import { ReelAnimation } from "@/components/reel-animation";
 import { cn, fmtUsdHr } from "@/lib/utils";
 
 /* ---------- Data ---------- */
@@ -170,8 +172,8 @@ function Hero({ isComingSoon, onLinkClick }: ComingSoonProps) {
       <div className="container relative flex flex-col items-center pb-24 pt-28 text-center md:pt-36">
         <HeroStagger className="flex flex-col items-center">
           <HeroItem>
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/5 px-3.5 py-1 text-xs font-mono text-primary mb-6 animate-pulse">
-              <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+            <span className="inline-flex items-center gap-1.5 rounded border border-primary/30 bg-primary/5 px-3.5 py-1 text-xs font-mono text-primary mb-6 animate-pulse">
+              <span className="h-1.5 w-1.5 rounded bg-primary animate-pulse" />
               CA: Coming Soon
             </span>
           </HeroItem>
@@ -239,26 +241,89 @@ function Hero({ isComingSoon, onLinkClick }: ComingSoonProps) {
 /* ---------- Ticker ---------- */
 
 function Ticker() {
-  const row = [...CLEARING, ...CLEARING, ...CLEARING, ...CLEARING];
+  const [prices, setPrices] = useState(
+    CLEARING.map((c) => ({
+      gpu: c.gpu,
+      price: c.price,
+      delta: c.delta,
+      basePrice: c.price,
+    }))
+  );
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      // Pick a random GPU to update
+      const randomIndex = Math.floor(Math.random() * CLEARING.length);
+      setPrices((prev) =>
+        prev.map((item, idx) => {
+          if (idx === randomIndex) {
+            const randomFactor = Math.random() * 0.5 - 0.25; // -25% to +25%
+            const newPrice = item.basePrice * (1 + randomFactor);
+            const newDelta = randomFactor * 100;
+            return {
+              ...item,
+              price: newPrice,
+              delta: newDelta,
+            };
+          }
+          return item;
+        })
+      );
+    }, 2500);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  const row = [...prices, ...prices, ...prices, ...prices];
+
   return (
     <div className="border-y border-border/60 bg-card/30 overflow-hidden">
       <div className="flex animate-marquee items-center gap-10 whitespace-nowrap py-3">
-        {row.map((c, i) => (
-          <span key={i} className="data inline-flex items-center gap-3 text-xs text-muted-foreground">
-            {i % CLEARING.length === 0 && (
-              <span className="data flex items-center gap-1.5 text-[11px] uppercase tracking-[0.2em] text-primary">
-                <Activity className="h-3 w-3" />
-                Live
+        {row.map((item, i) => {
+          const priceText = fmtUsdHr(item.price);
+          const deltaText = `${item.delta > 0 ? "+" : ""}${item.delta.toFixed(1)}%`;
+
+          return (
+            <span key={i} className="data inline-flex items-center gap-3 text-xs text-muted-foreground">
+              {i % CLEARING.length === 0 && (
+                <span className="data flex items-center gap-1.5 text-[11px] uppercase tracking-[0.2em] text-primary">
+                  <Activity className="h-3 w-3 animate-pulse" />
+                  Live
+                </span>
+              )}
+              
+              {/* GPU Logo */}
+              <span className="inline-flex items-center text-primary/70 shrink-0">
+                <Cpu className="h-3.5 w-3.5" />
               </span>
-            )}
-            <span className="text-foreground">{c.gpu}</span>{" "}
-            {fmtUsdHr(c.price)}{" "}
-            <span className={c.delta < 0 ? "text-primary" : "text-destructive"}>
-              {c.delta > 0 ? "+" : ""}
-              {c.delta}%
+
+              <span className="text-foreground font-semibold">{item.gpu}</span>
+
+              {/* USDC Logo & Price */}
+              <span className="inline-flex items-center gap-1">
+                <Image
+                  src="/usdc_logo.png"
+                  alt="USDC"
+                  width={14}
+                  height={14}
+                  className="rounded-full shrink-0"
+                />
+                <ReelAnimation text={priceText} className="font-mono text-foreground font-bold" />
+              </span>
+
+              <span
+                className={cn(
+                  "font-mono text-[10px] px-1.5 py-0.5 rounded-sm shrink-0",
+                  item.delta < 0
+                    ? "text-primary bg-primary/10 border border-primary/20"
+                    : "text-destructive bg-destructive/10 border border-destructive/20"
+                )}
+              >
+                <ReelAnimation text={deltaText} />
+              </span>
             </span>
-          </span>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
@@ -581,9 +646,10 @@ function SiteFooter({ isComingSoon, onLinkClick }: ComingSoonProps) {
             <p className="data text-xs text-muted-foreground/50">
               © {new Date().getFullYear()} Obscura. Compute in the dark.
             </p>
-            <p className="data text-xs text-primary font-mono font-medium animate-pulse">
+            <span className="inline-flex items-center gap-1.5 rounded border border-primary/30 bg-primary/5 px-2.5 py-0.5 text-xs font-mono text-primary animate-pulse">
+              <span className="h-1.5 w-1.5 rounded bg-primary animate-pulse" />
               CA: Coming Soon
-            </p>
+            </span>
             <p className="data text-xs text-muted-foreground/40">
               Pseudonymous · No KYC · USDC-settled
             </p>
