@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -31,6 +32,7 @@ import {
 } from "@/components/motion";
 import { TextScramble } from "@/components/text-scramble";
 import { BlurTextCycle } from "@/components/blur-text-cycle";
+import { ComingSoonModal } from "@/components/coming-soon-modal";
 import { cn, fmtUsdHr } from "@/lib/utils";
 
 /* ---------- Data ---------- */
@@ -94,6 +96,29 @@ const FOOTER_LINKS = {
 /* ---------- Page ---------- */
 
 export default function Home() {
+  const [isComingSoonOpen, setIsComingSoonOpen] = useState(false);
+  const isComingSoon = process.env.NEXT_PUBLIC_IS_COMING_SOON === "true" || process.env.IS_COMING_SOON === "true";
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("comingsoon") === "true") {
+        setIsComingSoonOpen(true);
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    }
+  }, []);
+
+  const handleLinkClick = (e: React.MouseEvent, href: string) => {
+    const isAppPage = ["/dashboard", "/marketplace", "/orders", "/agent"].some(
+      (path) => href === path || href.startsWith(path + "/")
+    );
+    if (isComingSoon && isAppPage) {
+      e.preventDefault();
+      setIsComingSoonOpen(true);
+    }
+  };
+
   return (
     <div className="relative min-h-screen overflow-x-clip bg-background">
       <ClickEffects />
@@ -111,7 +136,7 @@ export default function Home() {
 
       <div className="relative z-10">
         <SiteHeader />
-        <Hero />
+        <Hero isComingSoon={isComingSoon} onLinkClick={handleLinkClick} />
         <Ticker />
         <PhaseStrip />
         <ClearingPrices />
@@ -119,9 +144,11 @@ export default function Home() {
         <PrivacyShowcase />
         <Flywheel />
         <BrandBand />
-        <CTA />
-        <SiteFooter />
+        <CTA isComingSoon={isComingSoon} onLinkClick={handleLinkClick} />
+        <SiteFooter isComingSoon={isComingSoon} onLinkClick={handleLinkClick} />
       </div>
+
+      <ComingSoonModal isOpen={isComingSoonOpen} onClose={() => setIsComingSoonOpen(false)} />
     </div>
   );
 }
@@ -130,7 +157,12 @@ export default function Home() {
 
 /* ---------- Hero ---------- */
 
-function Hero() {
+interface ComingSoonProps {
+  isComingSoon: boolean;
+  onLinkClick: (e: React.MouseEvent, href: string) => void;
+}
+
+function Hero({ isComingSoon, onLinkClick }: ComingSoonProps) {
   return (
     <section className="relative overflow-hidden">
       <div className="container relative flex flex-col items-center pb-24 pt-28 text-center md:pt-36">
@@ -169,15 +201,15 @@ function Hero() {
 
           <HeroItem>
             <div className="mt-10 flex flex-col items-center gap-3 sm:flex-row">
-              <Link href="/dashboard">
+              <Link href="/dashboard" onClick={(e) => onLinkClick(e, "/dashboard")}>
                 <Button size="lg" variant="white">
-                  Launch app
+                  {isComingSoon ? "Coming soon" : "Launch app"}
                   <ArrowRight className="ml-1.5 h-4 w-4" />
                 </Button>
               </Link>
-              <Link href="/marketplace">
+              <Link href="/marketplace" onClick={(e) => onLinkClick(e, "/marketplace")}>
                 <Button size="lg" variant="outline">
-                  View live prices
+                  {isComingSoon ? "Coming soon" : "View live prices"}
                 </Button>
               </Link>
             </div>
@@ -392,7 +424,7 @@ function Flywheel() {
 
 /* ---------- CTA ---------- */
 
-function CTA() {
+function CTA({ isComingSoon, onLinkClick }: ComingSoonProps) {
   return (
     <section className="container py-24">
       <ScaleIn>
@@ -424,9 +456,9 @@ function CTA() {
             </FadeIn>
             <FadeIn delay={0.3}>
               <div className="mt-8 flex justify-center">
-                <Link href="/dashboard">
+                <Link href="/dashboard" onClick={(e) => onLinkClick(e, "/dashboard")}>
                   <Button size="lg" variant="white">
-                    Launch app
+                    {isComingSoon ? "Coming soon" : "Launch app"}
                     <ArrowRight className="ml-1.5 h-4 w-4" />
                   </Button>
                 </Link>
@@ -441,7 +473,7 @@ function CTA() {
 
 /* ---------- Footer ---------- */
 
-function SiteFooter() {
+function SiteFooter({ isComingSoon, onLinkClick }: ComingSoonProps) {
   return (
     <footer className="relative overflow-hidden border-t border-border">
       {/* Giant OBSCURA background text */}
@@ -477,6 +509,7 @@ function SiteFooter() {
                 <li key={label}>
                   <Link
                     href={href}
+                    onClick={(e) => onLinkClick(e, href)}
                     className="text-sm text-muted-foreground transition-colors hover:text-foreground"
                   >
                     {label}

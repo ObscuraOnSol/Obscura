@@ -10,12 +10,27 @@ import { Wordmark } from "@/components/logo";
 import { useWallet } from "@/lib/wallet";
 import { useSession } from "@/lib/session";
 import { shortHash } from "@/lib/utils";
-
+import { ComingSoonModal } from "@/components/coming-soon-modal";
 
 export function SiteHeader() {
   const [isOpen, setIsOpen] = useState(false);
-  const { wallet, connect, disconnect, connecting } = useWallet();
+  const [isComingSoonOpen, setIsComingSoonOpen] = useState(false);
+  
+  const { wallet, connect, connecting } = useWallet();
   const { signedIn, signingIn, signIn, signOut } = useSession();
+
+  const isComingSoon = process.env.NEXT_PUBLIC_IS_COMING_SOON === "true" || process.env.IS_COMING_SOON === "true";
+
+  const handleLinkClick = (e: React.MouseEvent, href: string) => {
+    const isAppPage = ["/dashboard", "/marketplace", "/orders", "/agent"].some(
+      (path) => href === path || href.startsWith(path + "/")
+    );
+    if (isComingSoon && isAppPage) {
+      e.preventDefault();
+      setIsComingSoonOpen(true);
+      setIsOpen(false); // Close mobile menu if open
+    }
+  };
 
   const nav = [
     ["Marketplace", "/marketplace"],
@@ -38,6 +53,7 @@ export function SiteHeader() {
               <Link
                 key={label}
                 href={href}
+                onClick={(e) => handleLinkClick(e, href)}
                 className="text-sm text-muted-foreground transition-colors hover:text-foreground"
               >
                 {label}
@@ -57,7 +73,7 @@ export function SiteHeader() {
                 </Button>
               ) : (
                 <div className="flex items-center gap-2">
-                  <Link href="/dashboard">
+                  <Link href="/dashboard" onClick={(e) => handleLinkClick(e, "/dashboard")}>
                     <Button variant="ghost" size="sm" className="font-mono text-xs">
                       {shortHash(wallet, 4, 4)}
                     </Button>
@@ -72,9 +88,9 @@ export function SiteHeader() {
                   </Button>
                 </div>
               )}
-              <Link href="/dashboard">
+              <Link href="/dashboard" onClick={(e) => handleLinkClick(e, "/dashboard")}>
                 <Button size="sm" variant="white">
-                  Launch app
+                  {isComingSoon ? "Coming soon" : "Launch app"}
                   <ArrowRight className="ml-1 h-3.5 w-3.5" />
                 </Button>
               </Link>
@@ -127,7 +143,10 @@ export function SiteHeader() {
                   <Link
                     key={label}
                     href={href}
-                    onClick={() => setIsOpen(false)}
+                    onClick={(e) => {
+                      setIsOpen(false);
+                      handleLinkClick(e, href);
+                    }}
                     className="text-lg font-medium text-muted-foreground transition-colors hover:text-foreground"
                   >
                     {label}
@@ -146,7 +165,10 @@ export function SiteHeader() {
                   </Button>
                 ) : (
                   <div className="flex flex-col gap-2 w-full">
-                    <Link href="/dashboard" className="w-full" onClick={() => setIsOpen(false)}>
+                    <Link href="/dashboard" className="w-full" onClick={(e) => {
+                      setIsOpen(false);
+                      handleLinkClick(e, "/dashboard");
+                    }}>
                       <Button variant="outline" className="w-full font-mono text-sm">
                         {shortHash(wallet, 4, 4)}
                       </Button>
@@ -163,9 +185,12 @@ export function SiteHeader() {
                     </Button>
                   </div>
                 )}
-                <Link href="/dashboard" onClick={() => setIsOpen(false)}>
+                <Link href="/dashboard" onClick={(e) => {
+                  setIsOpen(false);
+                  handleLinkClick(e, "/dashboard");
+                }}>
                   <Button className="w-full" variant="white">
-                    Launch app
+                    {isComingSoon ? "Coming soon" : "Launch app"}
                     <ArrowRight className="ml-1 h-3.5 w-3.5" />
                   </Button>
                 </Link>
@@ -174,6 +199,8 @@ export function SiteHeader() {
           </>
         )}
       </AnimatePresence>
+
+      <ComingSoonModal isOpen={isComingSoonOpen} onClose={() => setIsComingSoonOpen(false)} />
     </>
   );
 }
