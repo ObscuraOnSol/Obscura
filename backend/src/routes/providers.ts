@@ -43,17 +43,18 @@ providersRouter.post(
       txSig,
     } = parsed.data;
 
-    // Verify USDC collateral transfer on-chain
+    // Verify USDC collateral transfer on-chain (including 0.7% protocol fee)
+    const expectedTransfer = stakeAmount * 1.007;
     const ok = await verifyUsdcTransfer(
       txSig,
       wallet,
       env.obscuraCollateralWallet,
-      stakeAmount,
+      expectedTransfer,
     );
     if (!ok) {
       res.status(400).json({
         error: "collateral_verification_failed",
-        message: `Failed to verify collateral payment of ${stakeAmount} USDC on ${env.network}.`,
+        message: `Failed to verify collateral payment (including fee) of ${expectedTransfer.toFixed(4)} USDC on ${env.network}.`,
       });
       return;
     }

@@ -19,6 +19,8 @@ import {
   Terminal,
   ArrowLeft,
   Coins,
+  Cpu,
+  Clock,
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useConnection } from "@solana/wallet-adapter-react";
@@ -30,7 +32,7 @@ import { PhaseBadge } from "@/components/ui/badge";
 import { FadeIn, StaggerContainer, StaggerItem } from "@/components/motion";
 import { useWallet } from "@/lib/wallet";
 import { useSession } from "@/lib/session";
-import { ordersApi, type SessionOrder } from "@/lib/api";
+import { ordersApi, marketApi, type SessionOrder } from "@/lib/api";
 import { computeCommitHash, randomSecretHex, usdToMicro } from "@/lib/commit";
 import { cn, fmtUsdHr, shortHash } from "@/lib/utils";
 import { performUsdcTransfer } from "@/lib/solana";
@@ -99,9 +101,34 @@ export function OrderFlow() {
   const { connection } = useConnection();
   const { signedIn, signIn } = useSession();
   const [orders, setOrders] = useState<SessionOrder[]>([]);
+  const [gpuTypes, setGpuTypes] = useState<string[]>(GPU_TYPES);
   const [gpuType, setGpuType] = useState(GPU_TYPES[0]);
   const [price, setPrice] = useState("1.8000");
   const [qty, setQty] = useState("1");
+
+  const baseRate = useMemo(() => {
+    switch (gpuType) {
+      case "H100 80GB": return 2.50;
+      case "A100 80GB": return 1.80;
+      case "RTX 4090": return 0.80;
+      case "L40S": return 1.20;
+      default: return 1.50;
+    }
+  }, [gpuType]);
+
+  const computedPrice = useMemo(() => {
+    const hours = parseInt(qty) || 1;
+    let factor = 1.0;
+    if (hours >= 24) factor = 0.80; // 20% discount for 24h+
+    else if (hours >= 12) factor = 0.85; // 15% discount for 12h+
+    else if (hours >= 6) factor = 0.90; // 10% discount for 6h+
+    else if (hours >= 3) factor = 0.95; // 5% discount for 3h+
+    return (baseRate * factor).toFixed(4);
+  }, [baseRate, qty]);
+
+  useEffect(() => {
+    setPrice(computedPrice);
+  }, [computedPrice]);
   const [secret, setSecret] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -131,6 +158,26 @@ export function OrderFlow() {
   };
 
   useEffect(() => setSecret(randomSecretHex()), []);
+
+  useEffect(() => {
+    marketApi.providers()
+      .then(({ providers }) => {
+        const activeGpus = Array.from(
+          new Set(
+            providers
+              .filter((p) => p.status === "active")
+              .map((p) => p.gpuType)
+          )
+        );
+        if (activeGpus.length > 0) {
+          setGpuTypes(activeGpus);
+          setGpuType((prev) => (activeGpus.includes(prev) ? prev : activeGpus[0]));
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to fetch GPU types from marketplace:", err);
+      });
+  }, []);
 
   const refresh = useCallback(async (w: string) => {
     try {
@@ -232,12 +279,14 @@ export function OrderFlow() {
     setBusy(true);
     try {
       const totalAmount = order.clearingPrice * order.hours;
+      // 0.5% protocol fee included
+      const payableAmount = totalAmount * 1.005;
       const txSig = await performUsdcTransfer(
         connection,
         publicKey,
         sendTransaction,
         order.assignedProviderWallet,
-        totalAmount,
+        payableAmount,
       );
 
       await ordersApi.settle(order.id, wallet, txSig);
@@ -261,14 +310,16 @@ export function OrderFlow() {
 
           <div className="mt-6 space-y-4">
             <div className="space-y-1.5">
-              <Label htmlFor="gpu">GPU type</Label>
+              <Label htmlFor="gpu" className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                <Cpu className="h-3.5 w-3.5 text-primary" /> GPU type
+              </Label>
               <select
                 id="gpu"
                 value={gpuType}
                 onChange={(e) => setGpuType(e.target.value)}
                 className="data flex h-10 w-full rounded-md border border-border bg-background/60 px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
-                {GPU_TYPES.map((g) => (
+                {gpuTypes.map((g) => (
                   <option key={g} value={g}>
                     {g}
                   </option>
@@ -278,17 +329,25 @@ export function OrderFlow() {
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label htmlFor="price">Price ($/hr)</Label>
-                <Input
-                  id="price"
-                  className="data"
-                  inputMode="decimal"
-                  value={price}
-                  onChange={(e) => setPrice(e.target.value)}
-                />
+                <Label htmlFor="price" className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                  <Coins className="h-3.5 w-3.5 text-primary" /> Price ($/hr)
+                </Label>
+                <div className="relative">
+                  <Input
+                    id="price"
+                    className="data pr-10 bg-background/20 text-muted-foreground cursor-not-allowed opacity-80"
+                    disabled
+                    inputMode="decimal"
+                    value={price}
+                    onChange={(e) => setPrice(e.target.value)}
+                  />
+                  <img src="/usdc_logo.png" alt="USDC" className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 object-contain rounded-full opacity-60" />
+                </div>
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="qty">Duration (Hours)</Label>
+                <Label htmlFor="qty" className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                  <Clock className="h-3.5 w-3.5 text-primary" /> Duration (Hours)
+                </Label>
                 <Input
                   id="qty"
                   className="data"
@@ -298,6 +357,44 @@ export function OrderFlow() {
                 />
               </div>
             </div>
+
+            {/* Lease Estimate & Protocol Fee Preview */}
+            {validInputs && (
+              <div className="rounded-xl border border-primary/20 bg-primary/5 p-3.5 space-y-2.5 text-xs">
+                <div className="flex items-center justify-between text-[11px] uppercase tracking-wider text-muted-foreground">
+                  <span>Order Cost Estimate</span>
+                  <span className="text-primary font-semibold">USDC</span>
+                </div>
+                
+                <div className="space-y-1.5 pt-1 border-t border-primary/10">
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Lease cost:</span>
+                    <span className="text-foreground font-mono">
+                      {(priceNum * qtyNum).toFixed(4)} USDC
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground flex items-center gap-1">
+                      Protocol fee (0.5%):
+                      <span className="text-[10px] text-muted-foreground/60 font-normal">(charged at settlement)</span>
+                    </span>
+                    <span className="text-foreground font-mono">
+                      {(priceNum * qtyNum * 0.005).toFixed(4)} USDC
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between font-bold pt-1.5 border-t border-primary/10 text-primary">
+                    <span>Total amount to pay:</span>
+                    <span className="flex items-center gap-1 font-mono">
+                      <img src="/usdc_logo.png" alt="USDC" className="h-3.5 w-3.5 object-contain rounded-full" />
+                      {(priceNum * qtyNum * 1.005).toFixed(4)} USDC
+                    </span>
+                  </div>
+                </div>
+                <div className="text-[9px] text-muted-foreground/75 leading-normal bg-background/30 rounded p-2 border border-border/40">
+                  ℹ️ Note: 0.5% is charged as a protocol fee on the total amount you pay to settle the lease.
+                </div>
+              </div>
+            )}
 
             {/* Commit hash preview (the only thing that hits the chain) */}
             <div className="rounded-md border border-dashed border-border bg-background/40 p-3">
@@ -730,11 +827,15 @@ function OrderRow({
             <span className="text-muted-foreground">Rent Details:</span>
             <span className="text-foreground">{order.hours} {order.hours === 1 ? "hour" : "hours"} @ {fmtUsdHr(order.clearingPrice)}</span>
           </div>
+          <div className="flex items-center justify-between">
+            <span className="text-muted-foreground">Protocol Fee (0.5%):</span>
+            <span className="text-foreground font-mono">{(order.clearingPrice * order.hours * 0.005).toFixed(4)} USDC</span>
+          </div>
           <div className="flex items-center justify-between font-semibold pt-1.5 border-t border-primary/10">
             <span className="text-primary">Total Payment:</span>
             <span className="text-primary flex items-center gap-1">
               <img src="/usdc_logo.png" alt="USDC" className="h-3.5 w-3.5 object-contain rounded-full" />
-              {(order.clearingPrice * order.hours).toFixed(4)} USDC
+              {(order.clearingPrice * order.hours * 1.005).toFixed(4)} USDC
             </span>
           </div>
         </div>

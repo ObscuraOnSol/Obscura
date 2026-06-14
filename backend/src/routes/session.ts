@@ -169,21 +169,22 @@ sessionRouter.post(
       return;
     }
 
-    // Verify buyer's payment to the provider
+    // Verify buyer's payment to the provider (including 0.5% protocol fee)
     const price = parseFloat(order.clearing_price);
     const totalAmount = price * order.hours;
+    const expectedTransfer = totalAmount * 1.005;
 
     const ok = await verifyUsdcTransfer(
       txSig,
       w,
       order.assigned_provider_wallet,
-      totalAmount,
+      expectedTransfer,
     );
 
     if (!ok) {
       res.status(400).json({
         error: "payment_verification_failed",
-        message: `Failed to verify payment of ${totalAmount.toFixed(4)} USDC to ${order.assigned_provider_wallet}.`,
+        message: `Failed to verify payment (including fee) of ${expectedTransfer.toFixed(4)} USDC to ${order.assigned_provider_wallet}.`,
       });
       return;
     }
