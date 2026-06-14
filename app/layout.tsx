@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { Providers } from "@/components/providers";
+import { Analytics } from "@vercel/analytics/next";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://obscura.compute";
 const OG_DESCRIPTION =
@@ -58,6 +59,7 @@ export default function RootLayout({
         className="font-sans antialiased"
       >
         <Providers>{children}</Providers>
+        <Analytics />
       </body>
     </html>
   );
