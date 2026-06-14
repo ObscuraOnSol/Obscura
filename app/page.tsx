@@ -30,6 +30,7 @@ import {
   ParallaxText,
 } from "@/components/motion";
 import { TextScramble } from "@/components/text-scramble";
+import { BlurTextCycle } from "@/components/blur-text-cycle";
 import { cn, fmtUsdHr } from "@/lib/utils";
 
 /* ---------- Data ---------- */
@@ -138,7 +139,16 @@ function Hero() {
             <h1 className="max-w-4xl text-5xl font-bold leading-[1.05] tracking-tight sm:text-6xl md:text-7xl lg:text-8xl">
               Compute
               <br />
-              <TextScramble text="in the dark." className="text-foreground" />
+              <BlurTextCycle
+                texts={[
+                  "in the dark.",
+                  "in private.",
+                  "in the shadows.",
+                  "in the umbra.",
+                  "in the shade."
+                ]}
+                className="text-foreground"
+              />
             </h1>
           </HeroItem>
 
