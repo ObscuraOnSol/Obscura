@@ -95,9 +95,6 @@ obscura/
 Next.js 15 · Tailwind + shadcn · Bun · Express · PostgreSQL (raw `pg`, no ORM) ·
 Solana + Anchor · Render · Docker.
 
-> The reference design specifies React+Vite, Drizzle+TimescaleDB, and tRPC. This
-> build deliberately uses **Next.js**, **raw PostgreSQL (no ORM)**, and **Bun** per
-> project preference; Timescale hypertables are an opt-in in `001_initial.sql`.
 
 ## Getting started
 
@@ -122,7 +119,7 @@ anchor build && anchor test
 
 ## Security
 
-See [`SECURITY.md`](SECURITY.md). Report vulnerabilities to **obscurasol@outlook.com**.
+See [`SECURITY.md`](SECURITY.md).
 
 ## License
 
