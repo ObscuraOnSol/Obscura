@@ -285,6 +285,10 @@ sessionRouter.post(
       res.status(404).json({ error: "order not found or not cancellable" });
       return;
     }
+    await query(
+      `DELETE FROM order_intents WHERE order_id = $1`,
+      [String(req.params.id)]
+    );
     res.json({ id: String(req.params.id), status: "cancelled" });
   }),
 );
