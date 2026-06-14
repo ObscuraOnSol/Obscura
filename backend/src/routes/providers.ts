@@ -4,7 +4,7 @@ import { z } from "zod";
 import { query } from "../db/index.ts";
 import { asyncHandler } from "../lib/async.ts";
 import { env } from "../lib/env.ts";
-import { verifyUsdcTransfer } from "../lib/solana.ts";
+import { verifyUsdcTransfer, verifyUsdcSplitTransfer } from "../lib/solana.ts";
 
 export const providersRouter = Router();
 
@@ -43,18 +43,20 @@ providersRouter.post(
       txSig,
     } = parsed.data;
 
-    // Verify USDC collateral transfer on-chain (including 0.7% protocol fee)
-    const expectedTransfer = stakeAmount * 1.007;
-    const ok = await verifyUsdcTransfer(
+    // Verify USDC collateral transfer and protocol fee on-chain
+    const feeAmount = stakeAmount * 0.007;
+    const ok = await verifyUsdcSplitTransfer(
       txSig,
       wallet,
       env.obscuraCollateralWallet,
-      expectedTransfer,
+      stakeAmount,
+      env.obscuraServiceWallet,
+      feeAmount,
     );
     if (!ok) {
       res.status(400).json({
         error: "collateral_verification_failed",
-        message: `Failed to verify collateral payment (including fee) of ${expectedTransfer.toFixed(4)} USDC on ${env.network}.`,
+        message: `Failed to verify collateral payment of ${stakeAmount} USDC and protocol fee of ${feeAmount.toFixed(4)} USDC to their respective wallets.`,
       });
       return;
     }

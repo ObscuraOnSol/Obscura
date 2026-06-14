@@ -18,6 +18,7 @@ export const env = {
   webCliUrl: process.env.WEB_CLI_URL ?? "http://localhost:7681",
   network: process.env.NETWORK ?? "devnet",
   obscuraCollateralWallet: process.env.OBSCURA_COLLATERAL_WALLET ?? "4RWwwY8LowKYSrzE9t8Z5Tn15rLH6D1Uz1z5NvxHzPj6",
+  obscuraServiceWallet: process.env.OBSCURA_SERVICE_WALLET ?? "FHMr5nLShb3AxFmdqS2dEwdseKFvaic6vyFcCm3Hm6Jn",
   usdcMint: process.env.USDC_MINT ?? "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
   usdcMintDevnet: process.env.USDC_MINT_DEVNET ?? "Gh9ZwEmd5Tg4Pq9d9Kh7X4T6PHW3cWUKAdJ1z7X3J42s",
 };

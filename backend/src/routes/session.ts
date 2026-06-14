@@ -7,7 +7,7 @@ import { asyncHandler } from "../lib/async.ts";
 import { computeCommitHash, commitMatches } from "../lib/commit.ts";
 import type { SessionRequest } from "../lib/session.ts";
 import { env } from "../lib/env.ts";
-import { verifyUsdcTransfer } from "../lib/solana.ts";
+import { verifyUsdcTransfer, verifyUsdcSplitTransfer } from "../lib/solana.ts";
 
 /**
  * Browser/session order API for wallet-connected users (as opposed to the
@@ -169,22 +169,24 @@ sessionRouter.post(
       return;
     }
 
-    // Verify buyer's payment to the provider (including 0.5% protocol fee)
+    // Verify buyer's payment to the provider and 0.5% protocol fee to the service wallet
     const price = parseFloat(order.clearing_price);
     const totalAmount = price * order.hours;
-    const expectedTransfer = totalAmount * 1.005;
+    const feeAmount = totalAmount * 0.005;
 
-    const ok = await verifyUsdcTransfer(
+    const ok = await verifyUsdcSplitTransfer(
       txSig,
       w,
       order.assigned_provider_wallet,
-      expectedTransfer,
+      totalAmount,
+      env.obscuraServiceWallet,
+      feeAmount,
     );
 
     if (!ok) {
       res.status(400).json({
         error: "payment_verification_failed",
-        message: `Failed to verify payment (including fee) of ${expectedTransfer.toFixed(4)} USDC to ${order.assigned_provider_wallet}.`,
+        message: `Failed to verify payment of ${totalAmount.toFixed(4)} USDC to provider and protocol fee of ${feeAmount.toFixed(4)} USDC to the service wallet.`,
       });
       return;
     }

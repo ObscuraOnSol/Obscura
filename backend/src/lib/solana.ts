@@ -92,3 +92,93 @@ export async function verifyUsdcTransfer(
     return false;
   }
 }
+
+export async function verifyUsdcSplitTransfer(
+  txSig: string,
+  expectedSender: string,
+  expectedRecipient1: string,
+  expectedAmount1Usdc: number,
+  expectedRecipient2: string,
+  expectedAmount2Usdc: number
+): Promise<boolean> {
+  const isMainnet = env.network === "mainnet" || env.network === "mainnet-beta";
+  const rpcUrl = process.env.SOLANA_RPC_URL || 
+    (isMainnet ? "https://api.mainnet-beta.solana.com" : "https://api.devnet.solana.com");
+  const usdcMint = isMainnet ? env.usdcMint : env.usdcMintDevnet;
+
+  try {
+    const response = await fetch(rpcUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "getTransaction",
+        params: [
+          txSig,
+          { encoding: "jsonParsed", maxSupportedTransactionVersion: 0 }
+        ]
+      })
+    });
+    
+    const json = (await response.json()) as any;
+    if (json.error || !json.result) {
+      console.error("[solana-verify] RPC returned error or no result for transaction:", txSig, json.error);
+      return false;
+    }
+    
+    const result = json.result;
+    
+    // Ensure transaction was successful
+    if (result.meta && result.meta.err) {
+      console.error("[solana-verify] Transaction failed on-chain:", txSig, result.meta.err);
+      return false;
+    }
+    
+    const tokenBalances = result.meta?.postTokenBalances || [];
+    const preBalances = result.meta?.preTokenBalances || [];
+    
+    const expectedAmount1Micro = Math.round(expectedAmount1Usdc * 1_000_000);
+    const expectedAmount2Micro = Math.round(expectedAmount2Usdc * 1_000_000);
+    
+    // Compute net change in recipient 1's wallet balance
+    let recipient1BalanceDiff = 0;
+    for (const post of tokenBalances) {
+      if (post.owner === expectedRecipient1 && post.mint === usdcMint) {
+        const pre = preBalances.find((p: any) => p.accountIndex === post.accountIndex);
+        const preAmount = pre ? Number(pre.uiTokenAmount.amount) : 0;
+        const postAmount = Number(post.uiTokenAmount.amount);
+        recipient1BalanceDiff += (postAmount - preAmount);
+      }
+    }
+
+    // Compute net change in recipient 2's wallet balance
+    let recipient2BalanceDiff = 0;
+    for (const post of tokenBalances) {
+      if (post.owner === expectedRecipient2 && post.mint === usdcMint) {
+        const pre = preBalances.find((p: any) => p.accountIndex === post.accountIndex);
+        const preAmount = pre ? Number(pre.uiTokenAmount.amount) : 0;
+        const postAmount = Number(post.uiTokenAmount.amount);
+        recipient2BalanceDiff += (postAmount - preAmount);
+      }
+    }
+    
+    const margin = 10;
+    const ok1 = Math.abs(recipient1BalanceDiff - expectedAmount1Micro) <= margin;
+    const ok2 = Math.abs(recipient2BalanceDiff - expectedAmount2Micro) <= margin;
+    
+    if (ok1 && ok2) {
+      return true;
+    }
+    
+    console.error(
+      `[solana-verify] USDC split transfer verification failed for sig: ${txSig}. ` +
+      `Recipient 1 (${expectedRecipient1}): expected ${expectedAmount1Micro}, got ${recipient1BalanceDiff}. ` +
+      `Recipient 2 (${expectedRecipient2}): expected ${expectedAmount2Micro}, got ${recipient2BalanceDiff}.`
+    );
+    return false;
+  } catch (err) {
+    console.error("[solana-verify] Error verifying split transaction:", err);
+    return false;
+  }
+}

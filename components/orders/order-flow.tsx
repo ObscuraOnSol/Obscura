@@ -37,7 +37,9 @@ import { useSession } from "@/lib/session";
 import { ordersApi, marketApi, type SessionOrder, type ProviderRow } from "@/lib/api";
 import { computeCommitHash, randomSecretHex, usdToMicro } from "@/lib/commit";
 import { cn, fmtUsdHr, shortHash } from "@/lib/utils";
-import { performUsdcTransfer } from "@/lib/solana";
+import { performUsdcTransfer, performUsdcSplitTransfer } from "@/lib/solana";
+
+const OBSCURA_SERVICE_WALLET = "FHMr5nLShb3AxFmdqS2dEwdseKFvaic6vyFcCm3Hm6Jn";
 
 const GPU_TYPES = ["H100 80GB", "A100 80GB", "RTX 4090", "L40S"];
 const PHASES = ["committed", "revealed", "matched", "settled"] as const;
@@ -282,14 +284,15 @@ export function OrderFlow() {
     setBusy(true);
     try {
       const totalAmount = order.clearingPrice * order.hours;
-      // 0.5% protocol fee included
-      const payableAmount = totalAmount * 1.005;
-      const txSig = await performUsdcTransfer(
+      const feeAmount = totalAmount * 0.005;
+      const txSig = await performUsdcSplitTransfer(
         connection,
         publicKey,
         sendTransaction,
         order.assignedProviderWallet,
-        payableAmount,
+        totalAmount,
+        OBSCURA_SERVICE_WALLET,
+        feeAmount,
       );
 
       await ordersApi.settle(order.id, wallet, txSig);

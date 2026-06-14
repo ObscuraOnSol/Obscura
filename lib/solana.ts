@@ -121,3 +121,86 @@ export async function performUsdcTransfer(
   
   return signature;
 }
+
+export async function performUsdcSplitTransfer(
+  connection: any,
+  publicKey: PublicKey,
+  sendTransaction: any,
+  recipient1Address: string,
+  amount1Usdc: number,
+  recipient2Address: string,
+  amount2Usdc: number
+): Promise<string> {
+  const mintAddress = getUsdcMint();
+  const mint = new PublicKey(mintAddress);
+  const recipient1 = new PublicKey(recipient1Address);
+  const recipient2 = new PublicKey(recipient2Address);
+  
+  const senderAta = getAssociatedTokenAddress(mint, publicKey);
+  const recipient1Ata = getAssociatedTokenAddress(mint, recipient1);
+  const recipient2Ata = getAssociatedTokenAddress(mint, recipient2);
+  
+  const transaction = new Transaction();
+  
+  // Check if recipient1 ATA exists
+  const accountInfo1 = await connection.getAccountInfo(recipient1Ata);
+  if (!accountInfo1) {
+    transaction.add(
+      createAssociatedTokenAccountInstruction(
+        publicKey,
+        recipient1Ata,
+        recipient1,
+        mint
+      )
+    );
+  }
+
+  // Check if recipient2 ATA exists
+  const accountInfo2 = await connection.getAccountInfo(recipient2Ata);
+  if (!accountInfo2) {
+    transaction.add(
+      createAssociatedTokenAccountInstruction(
+        publicKey,
+        recipient2Ata,
+        recipient2,
+        mint
+      )
+    );
+  }
+  
+  const amount1Micro = Math.round(amount1Usdc * 1_000_000);
+  const amount2Micro = Math.round(amount2Usdc * 1_000_000);
+  
+  transaction.add(
+    createTransferInstruction(
+      senderAta,
+      recipient1Ata,
+      publicKey,
+      amount1Micro
+    )
+  );
+
+  transaction.add(
+    createTransferInstruction(
+      senderAta,
+      recipient2Ata,
+      publicKey,
+      amount2Micro
+    )
+  );
+  
+  const latestBlockhash = await connection.getLatestBlockhash();
+  transaction.recentBlockhash = latestBlockhash.blockhash;
+  transaction.feePayer = publicKey;
+  
+  const signature = await sendTransaction(transaction, connection);
+  
+  // Wait for confirmation
+  await connection.confirmTransaction({
+    signature,
+    blockhash: latestBlockhash.blockhash,
+    lastValidBlockHeight: latestBlockhash.lastValidBlockHeight
+  }, "confirmed");
+  
+  return signature;
+}

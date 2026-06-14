@@ -24,9 +24,10 @@ import { marketApi, providersApi, type ProviderRow } from "@/lib/api";
 import { fmtUsdHr, shortHash } from "@/lib/utils";
 import { useWallet } from "@/lib/wallet";
 import { Button } from "@/components/ui/button";
-import { performUsdcTransfer } from "@/lib/solana";
+import { performUsdcTransfer, performUsdcSplitTransfer } from "@/lib/solana";
 
 const OBSCURA_COLLATERAL_WALLET = "4RWwwY8LowKYSrzE9t8Z5Tn15rLH6D1Uz1z5NvxHzPj6";
+const OBSCURA_SERVICE_WALLET = "FHMr5nLShb3AxFmdqS2dEwdseKFvaic6vyFcCm3Hm6Jn";
 
 interface Row {
   id: string;
@@ -239,13 +240,15 @@ function ProvideGpuForm({ onRegistered }: { onRegistered: () => void }) {
 
     setBusy(true);
     try {
-      // 1. Perform on-chain transfer of USDC collateral stake + 0.7% protocol fee
-      const txSig = await performUsdcTransfer(
+      // 1. Perform split on-chain transfers: collateral to escrow, fee to service wallet
+      const txSig = await performUsdcSplitTransfer(
         connection,
         publicKey,
         sendTransaction,
         OBSCURA_COLLATERAL_WALLET,
-        totalSellerPayable,
+        calculatedCollateral,
+        OBSCURA_SERVICE_WALLET,
+        sellerProtocolFee,
       );
 
       // 2. Call backend register API with capacity=1 (units removed)
