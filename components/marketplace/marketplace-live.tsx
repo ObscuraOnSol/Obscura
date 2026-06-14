@@ -73,7 +73,7 @@ export function MarketplaceLive() {
                   </div>
                   <div className="data flex items-center gap-1.5 text-xl font-bold text-primary">
                     <img src="/usdc_logo.png" alt="USDC" className="h-4 w-4 object-contain rounded-full" />
-                    {p.clearingPrice != null ? fmtUsdHr(p.clearingPrice) : "-"}
+                    {p.clearingPrice != null ? fmtUsdHr(p.clearingPrice).replace("$", "") : "-"}
                   </div>
                 </div>
                 <div className="data mt-4 flex flex-wrap gap-x-6 gap-y-2 text-xs text-muted-foreground">
