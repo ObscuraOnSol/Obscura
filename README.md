@@ -102,8 +102,8 @@ The UI always makes the current phase explicit, so users know what is, and isn't
 ## API (public + agent)
 
 The interactive OpenAPI documentation for AI agents is available at:
-* **Interactive Docs**: [http://localhost:3001/v1/agent/docs](http://localhost:3001/v1/agent/docs) (or production environment at `${API_BASE}/v1/agent/docs`)
-* **OpenAPI JSON Spec**: [http://localhost:3001/v1/agent/docs.json](http://localhost:3001/v1/agent/docs.json) (or production environment at `${API_BASE}/v1/agent/docs.json`)
+* **Interactive Docs**: [https://api.obscuraonsol.com/v1/agent/docs](https://api.obscuraonsol.com/v1/agent/docs) 
+* **OpenAPI JSON Spec**: [https://api.obscuraonsol.com/v1/agent/docs.json](https://api.obscuraonsol.com/v1/agent/docs.json) 
 
 | Method | Path | Description |
 |---|---|---|
