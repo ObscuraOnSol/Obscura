@@ -3,7 +3,7 @@ import "./globals.css";
 import { Providers } from "@/components/providers";
 import { Analytics } from "@vercel/analytics/next";
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://obscura.compute";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://obscuraonsol.com";
 const OG_DESCRIPTION =
   "A dark pool for AI/GPU compute on Solana. No one sees what you buy, what you pay, or when.";
 
