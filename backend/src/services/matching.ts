@@ -113,12 +113,13 @@ export async function runBatch(): Promise<BatchResult> {
         // Find an active provider for this GPU type that has capacity > 0
         const { rows: matchedProviders } = await client.query<{
           id: string;
+          wallet: string;
           host: string | null;
           port: string | null;
           username: string | null;
           password: string | null;
         }>(
-          `SELECT id, host, port, username, password 
+          `SELECT id, wallet, host, port, username, password 
            FROM providers 
            WHERE gpu_type = $1 AND status = 'active' AND capacity > 0
            ORDER BY updated_at ASC
@@ -130,6 +131,10 @@ export async function runBatch(): Promise<BatchResult> {
         let port: string | null = null;
         let username: string | null = null;
         let password: string | null = null;
+        let provWallet: string | null = null;
+
+        const orderIntent = list.find((it) => it.order_id === orderId);
+        const orderHours = orderIntent ? orderIntent.qty : 1;
 
         if (matchedProviders.length > 0) {
           const prov = matchedProviders[0];
@@ -137,8 +142,8 @@ export async function runBatch(): Promise<BatchResult> {
           port = prov.port;
           username = prov.username;
           password = prov.password;
+          provWallet = prov.wallet;
 
-          const orderIntent = list.find((it) => it.order_id === orderId);
           const deductQty = orderIntent ? orderIntent.qty : 1;
           await client.query(
             `UPDATE providers SET capacity = GREATEST(0, capacity - $1) WHERE id = $2`,
@@ -148,13 +153,16 @@ export async function runBatch(): Promise<BatchResult> {
 
         await client.query(
           `UPDATE orders 
-           SET status = 'settled', 
+           SET status = 'matched', 
                assigned_host = $1, 
                assigned_port = $2, 
                assigned_username = $3, 
-               assigned_password = $4
-           WHERE id = $5`,
-          [host, port, username, password, orderId],
+               assigned_password = $4,
+               assigned_provider_wallet = $5,
+               clearing_price = $6,
+               hours = $7
+           WHERE id = $8`,
+          [host, port, username, password, provWallet, clearingPrice, orderHours, orderId],
         );
       }
 

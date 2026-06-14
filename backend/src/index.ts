@@ -4,6 +4,7 @@ import { app } from "./app.ts";
 import { env } from "./lib/env.ts";
 import { migrate } from "./db/migrate.ts";
 import { startMatchingEngine } from "./services/matching.ts";
+import { startHealthChecker } from "./services/health.ts";
 
 async function main() {
   if (env.databaseUrl) {
@@ -20,8 +21,11 @@ async function main() {
     );
   });
 
-  // The matching engine runs the batch auction on an interval.
-  if (env.databaseUrl) startMatchingEngine();
+  // Start background engines
+  if (env.databaseUrl) {
+    startMatchingEngine();
+    startHealthChecker();
+  }
 }
 
 main().catch((err) => {

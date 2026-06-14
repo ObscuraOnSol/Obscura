@@ -7,6 +7,7 @@ import { asyncHandler } from "../lib/async.ts";
 import { computeCommitHash, commitMatches } from "../lib/commit.ts";
 import type { SessionRequest } from "../lib/session.ts";
 import { env } from "../lib/env.ts";
+import { verifyUsdcTransfer } from "../lib/solana.ts";
 
 /**
  * Browser/session order API for wallet-connected users (as opposed to the
@@ -123,6 +124,80 @@ sessionRouter.post(
   }),
 );
 
+// POST /api/session/orders/:id/settle — settle/pay phase
+const settleSchema = z.object({
+  wallet,
+  txSig: z.string().regex(/^[1-9A-HJ-NP-Za-km-z]{32,88}$/, "invalid transaction signature"),
+});
+
+sessionRouter.post(
+  "/session/orders/:id/settle",
+  asyncHandler(async (req, res) => {
+    const parsed = settleSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: "validation_failed", issues: parsed.error.issues });
+      return;
+    }
+    const w = (req as SessionRequest).sessionWallet ?? parsed.data.wallet;
+    const { txSig } = parsed.data;
+
+    const id = String(req.params.id);
+    const { rows } = await query<{
+      status: string;
+      assigned_provider_wallet: string | null;
+      clearing_price: string | null;
+      hours: number | null;
+    }>(
+      `SELECT status, assigned_provider_wallet, clearing_price, hours 
+       FROM orders WHERE id = $1 AND wallet = $2`,
+      [id, w],
+    );
+
+    if (rows.length === 0) {
+      res.status(404).json({ error: "order not found" });
+      return;
+    }
+
+    const order = rows[0];
+    if (order.status !== "matched") {
+      res.status(400).json({ error: `cannot settle order in status '${order.status}'` });
+      return;
+    }
+
+    if (!order.assigned_provider_wallet || !order.clearing_price || !order.hours) {
+      res.status(400).json({ error: "order assignment details missing" });
+      return;
+    }
+
+    // Verify buyer's payment to the provider
+    const price = parseFloat(order.clearing_price);
+    const totalAmount = price * order.hours;
+
+    const ok = await verifyUsdcTransfer(
+      txSig,
+      w,
+      order.assigned_provider_wallet,
+      totalAmount,
+    );
+
+    if (!ok) {
+      res.status(400).json({
+        error: "payment_verification_failed",
+        message: `Failed to verify payment of ${totalAmount.toFixed(4)} USDC to ${order.assigned_provider_wallet}.`,
+      });
+      return;
+    }
+
+    // Success! Update status to settled
+    await query(
+      `UPDATE orders SET status = 'settled' WHERE id = $1`,
+      [id]
+    );
+
+    res.json({ id, status: "settled", phase: "SETTLED" });
+  }),
+);
+
 // POST /api/session/orders/:id/cancel
 sessionRouter.post(
   "/session/orders/:id/cancel",
@@ -162,8 +237,11 @@ sessionRouter.get(
       revealed: boolean;
       status: string;
       ts: Date;
+      assigned_provider_wallet: string | null;
+      clearing_price: string | null;
+      hours: number | null;
     }>(
-      `SELECT id, gpu_type, commit_hash, revealed, status, ts
+      `SELECT id, gpu_type, commit_hash, revealed, status, ts, assigned_provider_wallet, clearing_price, hours
        FROM orders WHERE wallet = $1 ORDER BY ts DESC LIMIT 100`,
       [w.data],
     );
@@ -175,6 +253,9 @@ sessionRouter.get(
         revealed: r.revealed,
         status: r.status,
         ts: r.ts,
+        assignedProviderWallet: r.assigned_provider_wallet,
+        clearingPrice: r.clearing_price ? Number(r.clearing_price) : null,
+        hours: r.hours,
       })),
     });
   }),

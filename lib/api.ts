@@ -28,6 +28,9 @@ export interface SessionOrder {
   revealed: boolean;
   status: "committed" | "revealed" | "matched" | "settled" | "cancelled";
   ts: string;
+  assignedProviderWallet?: string | null;
+  clearingPrice?: number | null;
+  hours?: number | null;
 }
 
 // SIWS session token, set by the SessionProvider after sign-in. When present,
@@ -59,10 +62,15 @@ export interface MarketPrice {
   ts: string;
 }
 export interface ProviderRow {
+  id: string;
+  wallet: string;
   gpuType: string;
   capacity: number;
-  providerCount: number;
-  totalStake: number;
+  stakeAmount: number;
+  rateMicro: number;
+  successfulPings: number;
+  failedPings: number;
+  status: string;
 }
 export interface MarketStats {
   window: string;
@@ -118,6 +126,12 @@ export const ordersApi = {
     call<{ id: string; status: string }>(`/api/session/orders/${id}/cancel`, {
       method: "POST",
       body: JSON.stringify({ wallet }),
+    }),
+
+  settle: (id: string, wallet: string, txSig: string) =>
+    call<{ id: string; status: string }>(`/api/session/orders/${id}/settle`, {
+      method: "POST",
+      body: JSON.stringify({ wallet, txSig }),
     }),
 
   list: (wallet: string) =>
@@ -183,6 +197,8 @@ export const providersApi = {
     port?: string,
     username?: string,
     password?: string,
+    rateMicro?: number,
+    txSig?: string,
   ) =>
     call<{ id: string; status: string }>("/api/providers", {
       method: "POST",
@@ -195,6 +211,8 @@ export const providersApi = {
         port,
         username,
         password,
+        rateMicro,
+        txSig,
       }),
     }),
 };

@@ -18,8 +18,10 @@ import {
   LogOut,
   Terminal,
   ArrowLeft,
+  Coins,
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
+import { useConnection } from "@solana/wallet-adapter-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,6 +33,7 @@ import { useSession } from "@/lib/session";
 import { ordersApi, type SessionOrder } from "@/lib/api";
 import { computeCommitHash, randomSecretHex, usdToMicro } from "@/lib/commit";
 import { cn, fmtUsdHr, shortHash } from "@/lib/utils";
+import { performUsdcTransfer } from "@/lib/solana";
 
 const GPU_TYPES = ["H100 80GB", "A100 80GB", "RTX 4090", "L40S"];
 const PHASES = ["committed", "revealed", "matched", "settled"] as const;
@@ -92,7 +95,8 @@ function loadReveal(id: string): RevealData | null {
 }
 
 export function OrderFlow() {
-  const { wallet, connect } = useWallet();
+  const { wallet, connect, sendTransaction, publicKey } = useWallet();
+  const { connection } = useConnection();
   const { signedIn, signIn } = useSession();
   const [orders, setOrders] = useState<SessionOrder[]>([]);
   const [gpuType, setGpuType] = useState(GPU_TYPES[0]);
@@ -217,6 +221,34 @@ export function OrderFlow() {
     }
   }
 
+  async function handlePayAndSettle(order: SessionOrder) {
+    if (!wallet || !publicKey || !sendTransaction) return;
+    if (!order.assignedProviderWallet || !order.clearingPrice || !order.hours) {
+      setError("Order matching details are missing.");
+      return;
+    }
+
+    setError(null);
+    setBusy(true);
+    try {
+      const totalAmount = order.clearingPrice * order.hours;
+      const txSig = await performUsdcTransfer(
+        connection,
+        publicKey,
+        sendTransaction,
+        order.assignedProviderWallet,
+        totalAmount,
+      );
+
+      await ordersApi.settle(order.id, wallet, txSig);
+      await refresh(wallet);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Payment or settlement failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,420px)_1fr]">
       {/* New order */}
@@ -256,7 +288,7 @@ export function OrderFlow() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="qty">Quantity</Label>
+                <Label htmlFor="qty">Duration (Hours)</Label>
                 <Input
                   id="qty"
                   className="data"
@@ -276,7 +308,7 @@ export function OrderFlow() {
                 {previewHash ? `0x${previewHash}` : "-"}
               </div>
               <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground/70">
-                Computed client-side from price, qty, and a random secret. Only this
+                Computed client-side from price, rent duration, and a random secret. Only this
                 hash is submitted, meaning your size and price stay private until reveal.
               </p>
             </div>
@@ -322,6 +354,7 @@ export function OrderFlow() {
                   onCancel={() => handleCancel(o)}
                   onOpenDetails={() => setModalOrder(o)}
                   onConnect={() => handleOpenConnect(o)}
+                  onPayAndSettle={() => handlePayAndSettle(o)}
                 />
               </StaggerItem>
             ))}
@@ -413,9 +446,9 @@ export function OrderFlow() {
                               </div>
                             </div>
                             <div className="flex flex-col gap-1">
-                              <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Quantity</span>
+                              <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Duration</span>
                               <div className="font-mono text-sm text-foreground font-medium">
-                                {data.qty} {data.qty === 1 ? "node" : "nodes"}
+                                {data.qty} {data.qty === 1 ? "hour" : "hours"}
                               </div>
                             </div>
                           </div>
@@ -432,7 +465,7 @@ export function OrderFlow() {
                         </p>
                         <p className="mt-1 text-[11px] text-muted-foreground leading-normal">
                           {isCommitted 
-                            ? "Only the commit hash is registered on-chain. The price, quantity, and secret are kept local until you perform the Reveal phase."
+                            ? "Only the commit hash is registered on-chain. The price, rent duration, and secret are kept local until you perform the Reveal phase."
                             : "The parameters and secret key for this order were not found in this device's local storage."
                           }
                         </p>
@@ -624,6 +657,7 @@ function OrderRow({
   onCancel,
   onOpenDetails,
   onConnect,
+  onPayAndSettle,
 }: {
   order: SessionOrder;
   busy: boolean;
@@ -631,6 +665,7 @@ function OrderRow({
   onCancel: () => void;
   onOpenDetails: () => void;
   onConnect: () => void;
+  onPayAndSettle: () => void;
 }) {
   const activeIdx = PHASES.indexOf(order.status as (typeof PHASES)[number]);
   const cancelled = order.status === "cancelled";
@@ -685,6 +720,26 @@ function OrderRow({
         </div>
       )}
 
+      {order.status === "matched" && order.assignedProviderWallet && order.clearingPrice && order.hours && (
+        <div className="mt-4 p-3 rounded-lg border border-dashed border-primary/20 bg-primary/5 text-xs space-y-1.5">
+          <div className="flex items-center justify-between">
+            <span className="text-muted-foreground">Provider:</span>
+            <span className="font-mono text-foreground">{shortHash(order.assignedProviderWallet, 5, 4)}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-muted-foreground">Rent Details:</span>
+            <span className="text-foreground">{order.hours} {order.hours === 1 ? "hour" : "hours"} @ {fmtUsdHr(order.clearingPrice)}</span>
+          </div>
+          <div className="flex items-center justify-between font-semibold pt-1.5 border-t border-primary/10">
+            <span className="text-primary">Total Payment:</span>
+            <span className="text-primary flex items-center gap-1">
+              <img src="/usdc_logo.png" alt="USDC" className="h-3.5 w-3.5 object-contain rounded-full" />
+              {(order.clearingPrice * order.hours).toFixed(4)} USDC
+            </span>
+          </div>
+        </div>
+      )}
+
       <div className="mt-4 flex items-center gap-2">
         {order.status === "committed" && (
           <Button size="sm" onClick={onReveal} disabled={busy}>
@@ -701,9 +756,14 @@ function OrderRow({
             in the next batch auction…
           </span>
         )}
+
+        {order.status === "matched" && (
+          <Button size="sm" variant="white" onClick={onPayAndSettle} disabled={busy}>
+            <Coins className="h-3.5 w-3.5 mr-1.5 text-primary" /> Pay & Settle
+          </Button>
+        )}
         
-        {/* Connect button for settled/matched orders */}
-        {(order.status === "settled" || order.status === "matched") && (
+        {order.status === "settled" && (
           <Button size="sm" variant="white" onClick={onConnect}>
             <Terminal className="h-3.5 w-3.5 mr-1.5" /> Connect
           </Button>

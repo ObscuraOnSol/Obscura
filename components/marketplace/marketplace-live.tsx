@@ -13,15 +13,27 @@ import {
   CheckCircle2,
   Loader2,
 } from "lucide-react";
+import { useConnection } from "@solana/wallet-adapter-react";
 
 import { FadeIn, StaggerContainer, StaggerItem } from "@/components/motion";
 import { marketApi, providersApi, type ProviderRow, type MarketPrice } from "@/lib/api";
-import { fmtUsdHr } from "@/lib/utils";
+import { fmtUsdHr, shortHash } from "@/lib/utils";
 import { useWallet } from "@/lib/wallet";
 import { Button } from "@/components/ui/button";
+import { performUsdcTransfer } from "@/lib/solana";
 
-interface Row extends ProviderRow {
-  clearingPrice: number | null;
+const OBSCURA_COLLATERAL_WALLET = "4RWwwY8LowKYSrzE9t8Z5Tn15rLH6D1Uz1z5NvxHzPj6";
+
+interface Row {
+  id: string;
+  wallet: string;
+  gpuType: string;
+  capacity: number;
+  stakeAmount: number;
+  rateMicro: number;
+  successfulPings: number;
+  failedPings: number;
+  status: string;
 }
 
 export function MarketplaceLive() {
@@ -31,17 +43,9 @@ export function MarketplaceLive() {
   const [searchQuery, setSearchQuery] = useState("");
 
   const refreshList = () => {
-    Promise.all([marketApi.providers(), marketApi.prices()])
-      .then(([{ providers }, { prices }]) => {
-        const priceBy = new Map<string, MarketPrice>(
-          prices.map((p) => [p.gpuType, p]),
-        );
-        setRows(
-          providers.map((p) => ({
-            ...p,
-            clearingPrice: priceBy.get(p.gpuType)?.clearingPrice ?? null,
-          })),
-        );
+    marketApi.providers()
+      .then(({ providers }) => {
+        setRows(providers as Row[]);
       })
       .catch((e) =>
         setError(e instanceof Error ? e.message : "failed to load marketplace"),
@@ -99,43 +103,70 @@ export function MarketplaceLive() {
           ) : rows.filter((p) => p.gpuType.toLowerCase().includes(searchQuery.toLowerCase())).length === 0 ? (
             <FadeIn>
               <div className="flex min-h-[20vh] flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card/10 p-8 text-center text-sm text-muted-foreground">
-                No GPU models match your search.
+                No active GPU providers match your search.
               </div>
             </FadeIn>
           ) : (
             <StaggerContainer className="grid gap-4 sm:grid-cols-2" staggerDelay={0.07}>
               {rows
                 .filter((p) => p.gpuType.toLowerCase().includes(searchQuery.toLowerCase()))
-                .map((p) => (
-                  <StaggerItem key={p.gpuType}>
-                    <div className="group rounded-xl border border-border bg-card/40 p-6 transition-colors hover:border-primary/30">
-                      <div className="flex items-baseline justify-between">
-                        <div className="flex items-center gap-2 text-lg font-semibold">
-                          <Cpu className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
-                          {p.gpuType}
+                .map((p) => {
+                  const totalPings = p.successfulPings + p.failedPings;
+                  const uptime = totalPings > 0 ? (p.successfulPings / totalPings) * 100 : 100;
+
+                  return (
+                    <StaggerItem key={p.id}>
+                      <div className="group rounded-xl border border-border bg-card/40 p-6 transition-colors hover:border-primary/30">
+                        <div className="flex items-baseline justify-between">
+                          <div>
+                            <div className="flex items-center gap-2 text-lg font-semibold">
+                              <Cpu className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                              {p.gpuType}
+                            </div>
+                            <div className="text-[10px] text-muted-foreground font-mono mt-1">
+                              Operator: {shortHash(p.wallet, 5, 4)}
+                            </div>
+                          </div>
+                          <div className="data flex items-center gap-1.5 text-xl font-bold text-primary">
+                            <img src="/usdc_logo.png" alt="USDC" className="h-4 w-4 object-contain rounded-full" />
+                            {fmtUsdHr(p.rateMicro / 1_000_000).replace("$", "")}
+                          </div>
                         </div>
-                        <div className="data flex items-center gap-1.5 text-xl font-bold text-primary">
-                          <img src="/usdc_logo.png" alt="USDC" className="h-4 w-4 object-contain rounded-full" />
-                          {p.clearingPrice != null ? fmtUsdHr(p.clearingPrice).replace("$", "") : "-"}
+
+                        {/* Uptime Bar */}
+                        <div className="mt-4 space-y-1">
+                          <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                            <span>Node Uptime</span>
+                            <span className="font-semibold">{uptime.toFixed(1)}% ({p.successfulPings}/{totalPings} checks)</span>
+                          </div>
+                          <div className="h-1.5 w-full rounded-full bg-border/40 overflow-hidden">
+                            <div
+                              className={`h-full transition-all ${
+                                uptime >= 90
+                                  ? "bg-emerald-500"
+                                  : uptime >= 75
+                                    ? "bg-amber-500"
+                                    : "bg-destructive"
+                              }`}
+                              style={{ width: `${uptime}%` }}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="data mt-4 flex flex-wrap gap-x-6 gap-y-2 text-xs text-muted-foreground">
+                          <span className="flex items-center gap-1.5">
+                            <Boxes className="h-3.5 w-3.5 text-muted-foreground/80" />
+                            {p.capacity} units
+                          </span>
+                          <span className="flex items-center gap-1.5">
+                            <Coins className="h-3.5 w-3.5 text-muted-foreground/80" />
+                            {p.stakeAmount} USDC collateral
+                          </span>
                         </div>
                       </div>
-                      <div className="data mt-4 flex flex-wrap gap-x-6 gap-y-2 text-xs text-muted-foreground">
-                        <span className="flex items-center gap-1.5">
-                          <Boxes className="h-3.5 w-3.5 text-muted-foreground/80" />
-                          {p.capacity} units available
-                        </span>
-                        <span className="flex items-center gap-1.5">
-                          <Server className="h-3.5 w-3.5 text-muted-foreground/80" />
-                          {p.providerCount} providers
-                        </span>
-                        <span className="flex items-center gap-1.5">
-                          <Coins className="h-3.5 w-3.5 text-muted-foreground/80" />
-                          {p.totalStake > 0 ? `${p.totalStake.toLocaleString()} $OBSC` : "- $OBSC"} staked
-                        </span>
-                      </div>
-                    </div>
-                  </StaggerItem>
-                ))}
+                    </StaggerItem>
+                  );
+                })}
             </StaggerContainer>
           )}
         </>
@@ -147,62 +178,90 @@ export function MarketplaceLive() {
 }
 
 function ProvideGpuForm({ onRegistered }: { onRegistered: () => void }) {
-  const { wallet, connect } = useWallet();
+  const { wallet, connect, sendTransaction, publicKey } = useWallet();
+  const { connection } = useConnection();
+
   const [gpuType, setGpuType] = useState("H100 80GB");
   const [customGpu, setCustomGpu] = useState("");
   const [capacity, setCapacity] = useState("1");
   const [stake, setStake] = useState("500");
-  
-  // Connection details
+  const [rate, setRate] = useState("1.80");
+
+  // Connection details (required)
   const [host, setHost] = useState("");
   const [port, setPort] = useState("22");
   const [username, setUsername] = useState("root");
   const [password, setPassword] = useState("");
-  
+
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!wallet) {
+    if (!wallet || !publicKey || !sendTransaction) {
       connect();
       return;
     }
-    
+
     setError(null);
     setSuccess(false);
-    
+
     const finalGpu = gpuType === "Custom" ? customGpu.trim() : gpuType;
     if (!finalGpu) {
       setError("Please specify a GPU model");
       return;
     }
-    
+
     const capNum = parseInt(capacity);
     if (isNaN(capNum) || capNum <= 0) {
       setError("Capacity must be a positive integer");
       return;
     }
-    
+
     const stakeNum = parseFloat(stake);
-    if (isNaN(stakeNum) || stakeNum < 0) {
-      setError("Stake amount must be a positive number");
+    if (isNaN(stakeNum) || stakeNum <= 0) {
+      setError("Collateral stake must be a positive number of USDC");
+      return;
+    }
+
+    const rateNum = parseFloat(rate);
+    if (isNaN(rateNum) || rateNum <= 0) {
+      setError("Hourly rate must be positive");
+      return;
+    }
+
+    if (!host.trim() || !port.trim() || !username.trim() || !password.trim()) {
+      setError("All SSH node connection details are required.");
       return;
     }
 
     setBusy(true);
     try {
+      // 1. Perform on-chain transfer of USDC collateral stake
+      const txSig = await performUsdcTransfer(
+        connection,
+        publicKey,
+        sendTransaction,
+        OBSCURA_COLLATERAL_WALLET,
+        stakeNum,
+      );
+
+      // 2. Call backend register API with the transaction signature
+      const rateMicroNum = Math.round(rateNum * 1_000_000);
       await providersApi.register(
         wallet,
         finalGpu,
         capNum,
         stakeNum,
-        host.trim() || undefined,
-        port.trim() || undefined,
-        username.trim() || undefined,
-        password.trim() || undefined
+        host.trim(),
+        port.trim(),
+        username.trim(),
+        password.trim(),
+        rateMicroNum,
+        txSig,
       );
+
       setSuccess(true);
       // Reset form
       setCapacity("1");
@@ -213,7 +272,7 @@ function ProvideGpuForm({ onRegistered }: { onRegistered: () => void }) {
       // Trigger list refresh
       onRegistered();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Registration failed");
+      setError(e instanceof Error ? e.message : "Collateral payment or registration failed");
     } finally {
       setBusy(false);
     }
@@ -228,7 +287,7 @@ function ProvideGpuForm({ onRegistered }: { onRegistered: () => void }) {
           </div>
           <h3 className="text-base font-semibold text-foreground">List Your GPU Node</h3>
           <p className="mt-2 max-w-sm text-xs leading-relaxed text-muted-foreground">
-            Connect your wallet to register compute capacity, stake collateral, and start earning USDC matching fees.
+            Connect your wallet to lock compute collateral, register capacity, and start earning USDC.
           </p>
           <Button onClick={connect} className="mt-5">
             Connect Wallet
@@ -258,7 +317,7 @@ function ProvideGpuForm({ onRegistered }: { onRegistered: () => void }) {
         {success && (
           <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 text-xs text-primary flex items-center gap-2">
             <CheckCircle2 className="h-4 w-4 shrink-0" />
-            <span>GPU node capacity successfully registered to compute pool!</span>
+            <span>GPU node capacity successfully registered and collateral locked!</span>
           </div>
         )}
 
@@ -297,10 +356,10 @@ function ProvideGpuForm({ onRegistered }: { onRegistered: () => void }) {
             )}
           </div>
 
-          {/* Capacity & Stake */}
-          <div className="grid gap-3 sm:grid-cols-2">
+          {/* Capacity, Hourly Rate & Collateral Stake */}
+          <div className="grid gap-3 sm:grid-cols-3">
             <div className="space-y-1.5">
-              <label htmlFor="capacity" className="text-xs font-medium text-muted-foreground">Available Capacity (Units)</label>
+              <label htmlFor="capacity" className="text-xs font-medium text-muted-foreground">Units</label>
               <input
                 id="capacity"
                 type="number"
@@ -315,12 +374,30 @@ function ProvideGpuForm({ onRegistered }: { onRegistered: () => void }) {
             </div>
 
             <div className="space-y-1.5">
-              <label htmlFor="stake" className="text-xs font-medium text-muted-foreground">Collateral Stake ($OBSC)</label>
+              <label htmlFor="rate" className="text-xs font-medium text-muted-foreground">Rate ($/hr)</label>
+              <div className="relative">
+                <input
+                  id="rate"
+                  type="number"
+                  min="0.0001"
+                  step="0.0001"
+                  placeholder="1.80"
+                  value={rate}
+                  onChange={(e) => setRate(e.target.value)}
+                  className="flex h-10 w-full rounded-md border border-border bg-background/60 pl-3 pr-12 py-1.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  required
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-bold text-muted-foreground">USDC</span>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label htmlFor="stake" className="text-xs font-medium text-muted-foreground">Collateral (USDC)</label>
               <div className="relative">
                 <input
                   id="stake"
                   type="number"
-                  min="0"
+                  min="0.1"
                   step="0.1"
                   placeholder="500"
                   value={stake}
@@ -328,14 +405,14 @@ function ProvideGpuForm({ onRegistered }: { onRegistered: () => void }) {
                   className="flex h-10 w-full rounded-md border border-border bg-background/60 pl-3 pr-12 py-1.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                   required
                 />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-muted-foreground">$OBSC</span>
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-bold text-muted-foreground">USDC</span>
               </div>
             </div>
           </div>
 
           <div className="border-t border-border/40 my-4 pt-4">
             <h4 className="text-xs font-semibold text-foreground flex items-center gap-1.5 mb-1">
-              <Globe className="h-3.5 w-3.5 text-primary" /> SSH Node Connection Details (Optional)
+              <Globe className="h-3.5 w-3.5 text-primary" /> SSH Node Connection Details
             </h4>
             <p className="text-[10px] text-muted-foreground mb-4">
               Enter the SSH details users will use to connect once matched and settled.
@@ -353,6 +430,7 @@ function ProvideGpuForm({ onRegistered }: { onRegistered: () => void }) {
                     value={host}
                     onChange={(e) => setHost(e.target.value)}
                     className="flex h-10 w-full rounded-md border border-border bg-background/60 px-3 py-1.5 text-xs text-foreground placeholder-muted-foreground/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    required
                   />
                 </div>
 
@@ -365,6 +443,7 @@ function ProvideGpuForm({ onRegistered }: { onRegistered: () => void }) {
                     value={port}
                     onChange={(e) => setPort(e.target.value)}
                     className="flex h-10 w-full rounded-md border border-border bg-background/60 px-3 py-1.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    required
                   />
                 </div>
               </div>
@@ -380,6 +459,7 @@ function ProvideGpuForm({ onRegistered }: { onRegistered: () => void }) {
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     className="flex h-10 w-full rounded-md border border-border bg-background/60 px-3 py-1.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    required
                   />
                 </div>
 
@@ -392,6 +472,7 @@ function ProvideGpuForm({ onRegistered }: { onRegistered: () => void }) {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="flex h-10 w-full rounded-md border border-border bg-background/60 px-3 py-1.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    required
                   />
                 </div>
               </div>
@@ -401,7 +482,7 @@ function ProvideGpuForm({ onRegistered }: { onRegistered: () => void }) {
 
         <Button type="submit" disabled={busy} className="w-full flex items-center justify-center gap-2">
           {busy && <Loader2 className="h-4 w-4 animate-spin" />}
-          <span>{busy ? "Registering GPU Node..." : "Register GPU Node"}</span>
+          <span>{busy ? "Locking Collateral & Registering..." : "Lock Collateral & List GPU"}</span>
         </Button>
       </form>
     </FadeIn>

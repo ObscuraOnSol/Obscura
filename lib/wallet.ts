@@ -10,12 +10,21 @@ import { useWalletModal } from "@solana/wallet-adapter-react-ui";
  * `wallet` is the connected public key in base58, or null.
  */
 export function useWallet() {
-  const { publicKey, connected, connecting, disconnect, signMessage } =
+  const { publicKey, connected, connecting, disconnect, signMessage, sendTransaction } =
     useAdapterWallet();
   const { setVisible } = useWalletModal();
 
   const wallet = publicKey ? publicKey.toBase58() : null;
   const connect = useCallback(() => setVisible(true), [setVisible]);
 
-  return { wallet, connected, connecting, connect, disconnect, signMessage, publicKey };
+  return {
+    wallet,
+    connected,
+    connecting,
+    connect,
+    disconnect,
+    signMessage,
+    publicKey,
+    sendTransaction,
+  };
 }
