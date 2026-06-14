@@ -37,7 +37,7 @@ import { useSession } from "@/lib/session";
 import { ordersApi, marketApi, type SessionOrder, type ProviderRow } from "@/lib/api";
 import { computeCommitHash, randomSecretHex, usdToMicro } from "@/lib/commit";
 import { cn, fmtUsdHr, shortHash } from "@/lib/utils";
-import { performUsdcTransfer, performUsdcSplitTransfer } from "@/lib/solana";
+import { performUsdcTransfer, performUsdcSplitTransfer, signAndSendSerializedTransaction } from "@/lib/solana";
 
 const OBSCURA_SERVICE_WALLET = "FHMr5nLShb3AxFmdqS2dEwdseKFvaic6vyFcCm3Hm6Jn";
 
@@ -283,18 +283,17 @@ export function OrderFlow() {
     setError(null);
     setBusy(true);
     try {
-      const totalAmount = order.clearingPrice * order.hours;
-      const feeAmount = totalAmount * 0.005;
-      const txSig = await performUsdcSplitTransfer(
+      // 1. Request serialized transaction from backend
+      const { serializedTx } = await ordersApi.buildSettleTx(order.id, publicKey.toBase58());
+
+      // 2. Sign and send transaction
+      const txSig = await signAndSendSerializedTransaction(
         connection,
-        publicKey,
-        sendTransaction,
-        order.assignedProviderWallet,
-        totalAmount,
-        OBSCURA_SERVICE_WALLET,
-        feeAmount,
+        serializedTx,
+        sendTransaction
       );
 
+      // 3. Confirm settlement on backend
       await ordersApi.settle(order.id, wallet, txSig);
       await refresh(wallet);
     } catch (e) {

@@ -8,6 +8,7 @@ import { computeCommitHash, commitMatches } from "../lib/commit.ts";
 import type { SessionRequest } from "../lib/session.ts";
 import { env } from "../lib/env.ts";
 import { verifyUsdcTransfer, verifyUsdcSplitTransfer } from "../lib/solana.ts";
+import { buildSplitTransferTx } from "../lib/tx-builder.ts";
 
 /**
  * Browser/session order API for wallet-connected users (as opposed to the
@@ -122,6 +123,67 @@ sessionRouter.post(
     );
     res.json({ id, status: "revealed", phase: "REVEALED" });
   }),
+);
+
+// POST /api/session/orders/:id/build-settle-tx — build serialized settlement tx
+sessionRouter.post(
+  "/session/orders/:id/build-settle-tx",
+  asyncHandler(async (req, res) => {
+    const w = (req as SessionRequest).sessionWallet ?? req.body.wallet;
+    if (!w) {
+      res.status(400).json({ error: "missing wallet" });
+      return;
+    }
+
+    const id = String(req.params.id);
+    const { rows } = await query<{
+      status: string;
+      assigned_provider_wallet: string | null;
+      clearing_price: string | null;
+      hours: number | null;
+    }>(
+      `SELECT status, assigned_provider_wallet, clearing_price, hours 
+       FROM orders WHERE id = $1 AND wallet = $2`,
+      [id, w],
+    );
+
+    if (rows.length === 0) {
+      res.status(404).json({ error: "order not found" });
+      return;
+    }
+
+    const order = rows[0];
+    if (order.status !== "matched") {
+      res.status(400).json({ error: `cannot settle order in status '${order.status}'` });
+      return;
+    }
+
+    if (!order.assigned_provider_wallet || !order.clearing_price || !order.hours) {
+      res.status(400).json({ error: "order assignment details missing" });
+      return;
+    }
+
+    const price = parseFloat(order.clearing_price);
+    const totalAmount = price * order.hours;
+    const feeAmount = totalAmount * 0.005;
+
+    try {
+      const serializedTx = await buildSplitTransferTx(
+        w,
+        order.assigned_provider_wallet,
+        totalAmount,
+        env.obscuraServiceWallet,
+        feeAmount
+      );
+      res.json({ serializedTx });
+    } catch (e) {
+      console.error("[solana-tx-builder] Failed to build settlement tx:", e);
+      res.status(500).json({
+        error: "tx_build_failed",
+        message: e instanceof Error ? e.message : "failed to build transaction"
+      });
+    }
+  })
 );
 
 // POST /api/session/orders/:id/settle — settle/pay phase

@@ -1,18 +1,16 @@
-import { Transaction, PublicKey, TransactionInstruction, SystemProgram } from "@solana/web3.js";
+import { Connection, PublicKey, Transaction, TransactionInstruction, SystemProgram } from "@solana/web3.js";
+import { env } from "./env.ts";
 
 const TOKEN_PROGRAM_ID = new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
 const ASSOCIATED_TOKEN_PROGRAM_ID = new PublicKey("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8kn");
 const RENT_SYSVAR_ID = new PublicKey("SysvarRent111111111111111111111111111111111");
 
-export const getUsdcMint = () => {
-  const network = process.env.NEXT_PUBLIC_NETWORK || "devnet";
-  if (network === "mainnet" || network === "mainnet-beta") {
-    return process.env.NEXT_PUBLIC_USDC_MINT || "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
-  }
-  return process.env.NEXT_PUBLIC_USDC_MINT_DEVNET || "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU";
-};
+function getUsdcMint(): PublicKey {
+  const isMainnet = env.network === "mainnet" || env.network === "mainnet-beta";
+  return new PublicKey(isMainnet ? env.usdcMint : env.usdcMintDevnet);
+}
 
-export function getAssociatedTokenAddress(mint: PublicKey, owner: PublicKey): PublicKey {
+function getAssociatedTokenAddress(mint: PublicKey, owner: PublicKey): PublicKey {
   return PublicKey.findProgramAddressSync(
     [owner.toBuffer(), TOKEN_PROGRAM_ID.toBuffer(), mint.toBuffer()],
     ASSOCIATED_TOKEN_PROGRAM_ID
@@ -66,77 +64,25 @@ function createTransferInstruction(
   });
 }
 
-export async function performUsdcTransfer(
-  connection: any,
-  publicKey: PublicKey,
-  sendTransaction: any,
-  recipientAddress: string,
-  amountUsdc: number
-): Promise<string> {
-  const mintAddress = getUsdcMint();
-  const mint = new PublicKey(mintAddress);
-  const recipient = new PublicKey(recipientAddress);
-  
-  const senderAta = getAssociatedTokenAddress(mint, publicKey);
-  const recipientAta = getAssociatedTokenAddress(mint, recipient);
-  
-  const transaction = new Transaction();
-  
-  // Check if recipient ATA exists
-  const accountInfo = await connection.getAccountInfo(recipientAta);
-  if (!accountInfo) {
-    transaction.add(
-      createAssociatedTokenAccountInstruction(
-        publicKey,
-        recipientAta,
-        recipient,
-        mint
-      )
-    );
-  }
-  
-  const amountMicro = Math.round(amountUsdc * 1_000_000);
-  
-  transaction.add(
-    createTransferInstruction(
-      senderAta,
-      recipientAta,
-      publicKey,
-      amountMicro
-    )
-  );
-  
-  const latestBlockhash = await connection.getLatestBlockhash();
-  transaction.recentBlockhash = latestBlockhash.blockhash;
-  transaction.feePayer = publicKey;
-  
-  const signature = await sendTransaction(transaction, connection);
-  
-  // Wait for confirmation
-  await connection.confirmTransaction({
-    signature,
-    blockhash: latestBlockhash.blockhash,
-    lastValidBlockHeight: latestBlockhash.lastValidBlockHeight
-  }, "confirmed");
-  
-  return signature;
-}
-
-export async function performUsdcSplitTransfer(
-  connection: any,
-  publicKey: PublicKey,
-  sendTransaction: any,
+export async function buildSplitTransferTx(
+  payerWallet: string,
   recipient1Address: string,
   amount1Usdc: number,
   recipient2Address: string,
   amount2Usdc: number
 ): Promise<string> {
-  const mintAddress = getUsdcMint();
-  const mint = new PublicKey(mintAddress);
+  const isMainnet = env.network === "mainnet" || env.network === "mainnet-beta";
+  const rpcUrl = process.env.SOLANA_RPC_URL || 
+    (isMainnet ? "https://api.mainnet-beta.solana.com" : "https://api.devnet.solana.com");
+  
+  const connection = new Connection(rpcUrl, "confirmed");
+  const payer = new PublicKey(payerWallet);
+  const mint = getUsdcMint();
+  
   const recipient1 = new PublicKey(recipient1Address);
   const recipient2 = new PublicKey(recipient2Address);
   
-  const senderAta = getAssociatedTokenAddress(mint, publicKey);
+  const senderAta = getAssociatedTokenAddress(mint, payer);
   const recipient1Ata = getAssociatedTokenAddress(mint, recipient1);
   const recipient2Ata = getAssociatedTokenAddress(mint, recipient2);
   
@@ -147,7 +93,7 @@ export async function performUsdcSplitTransfer(
   if (!accountInfo1) {
     transaction.add(
       createAssociatedTokenAccountInstruction(
-        publicKey,
+        payer,
         recipient1Ata,
         recipient1,
         mint
@@ -160,7 +106,7 @@ export async function performUsdcSplitTransfer(
   if (!accountInfo2) {
     transaction.add(
       createAssociatedTokenAccountInstruction(
-        publicKey,
+        payer,
         recipient2Ata,
         recipient2,
         mint
@@ -175,7 +121,7 @@ export async function performUsdcSplitTransfer(
     createTransferInstruction(
       senderAta,
       recipient1Ata,
-      publicKey,
+      payer,
       amount1Micro
     )
   );
@@ -184,47 +130,19 @@ export async function performUsdcSplitTransfer(
     createTransferInstruction(
       senderAta,
       recipient2Ata,
-      publicKey,
+      payer,
       amount2Micro
     )
   );
   
   const latestBlockhash = await connection.getLatestBlockhash();
   transaction.recentBlockhash = latestBlockhash.blockhash;
-  transaction.feePayer = publicKey;
+  transaction.feePayer = payer;
   
-  const signature = await sendTransaction(transaction, connection);
+  const serialized = transaction.serialize({
+    requireAllSignatures: false,
+    verifySignatures: false
+  });
   
-  // Wait for confirmation
-  await connection.confirmTransaction({
-    signature,
-    blockhash: latestBlockhash.blockhash,
-    lastValidBlockHeight: latestBlockhash.lastValidBlockHeight
-  }, "confirmed");
-  
-  return signature;
-}
-
-export async function signAndSendSerializedTransaction(
-  connection: any,
-  serializedTxBase64: string,
-  sendTransaction: any
-): Promise<string> {
-  const binaryStr = atob(serializedTxBase64);
-  const bytes = new Uint8Array(binaryStr.length);
-  for (let i = 0; i < binaryStr.length; i++) {
-    bytes[i] = binaryStr.charCodeAt(i);
-  }
-  const transaction = Transaction.from(bytes);
-  const latestBlockhash = await connection.getLatestBlockhash();
-  
-  const signature = await sendTransaction(transaction, connection);
-  
-  await connection.confirmTransaction({
-    signature,
-    blockhash: latestBlockhash.blockhash,
-    lastValidBlockHeight: latestBlockhash.lastValidBlockHeight
-  }, "confirmed");
-  
-  return signature;
+  return serialized.toString("base64");
 }

@@ -29,7 +29,7 @@ import { marketApi, providersApi, type ProviderRow } from "@/lib/api";
 import { fmtUsdHr, shortHash } from "@/lib/utils";
 import { useWallet } from "@/lib/wallet";
 import { Button } from "@/components/ui/button";
-import { performUsdcTransfer, performUsdcSplitTransfer } from "@/lib/solana";
+import { performUsdcTransfer, performUsdcSplitTransfer, signAndSendSerializedTransaction } from "@/lib/solana";
 
 const OBSCURA_COLLATERAL_WALLET = "4RWwwY8LowKYSrzE9t8Z5Tn15rLH6D1Uz1z5NvxHzPj6";
 const OBSCURA_SERVICE_WALLET = "FHMr5nLShb3AxFmdqS2dEwdseKFvaic6vyFcCm3Hm6Jn";
@@ -327,18 +327,20 @@ function ProvideGpuForm({ onRegistered }: { onRegistered: () => void }) {
 
     setBusy(true);
     try {
-      // 1. Perform split on-chain transfers: collateral to escrow, fee to service wallet
-      const txSig = await performUsdcSplitTransfer(
-        connection,
-        publicKey,
-        sendTransaction,
-        OBSCURA_COLLATERAL_WALLET,
-        calculatedCollateral,
-        OBSCURA_SERVICE_WALLET,
-        sellerProtocolFee,
+      // 1. Request serialized transaction from backend
+      const { serializedTx } = await providersApi.buildRegisterTx(
+        publicKey.toBase58(),
+        rateNum
       );
 
-      // 2. Call backend register API with capacity=1 (units removed)
+      // 2. Sign and send transaction
+      const txSig = await signAndSendSerializedTransaction(
+        connection,
+        serializedTx,
+        sendTransaction
+      );
+
+      // 3. Call backend register API with capacity=1 (units removed)
       const rateMicroNum = Math.round(rateNum * 1_000_000);
       await providersApi.register(
         wallet,

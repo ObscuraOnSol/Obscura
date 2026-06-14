@@ -134,6 +134,12 @@ export const ordersApi = {
       body: JSON.stringify({ wallet, txSig }),
     }),
 
+  buildSettleTx: (id: string, wallet: string) =>
+    call<{ serializedTx: string }>(`/api/session/orders/${id}/build-settle-tx`, {
+      method: "POST",
+      body: JSON.stringify({ wallet }),
+    }),
+
   list: (wallet: string) =>
     call<{ orders: SessionOrder[] }>(
       `/api/session/orders?wallet=${encodeURIComponent(wallet)}`,
@@ -188,6 +194,12 @@ export const authApi = {
 };
 
 export const providersApi = {
+  buildRegisterTx: (wallet: string, rate: number) =>
+    call<{ serializedTx: string }>("/api/providers/build-register-tx", {
+      method: "POST",
+      body: JSON.stringify({ wallet, rate }),
+    }),
+
   register: (
     wallet: string,
     gpuType: string,

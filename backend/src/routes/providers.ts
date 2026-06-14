@@ -5,8 +5,47 @@ import { query } from "../db/index.ts";
 import { asyncHandler } from "../lib/async.ts";
 import { env } from "../lib/env.ts";
 import { verifyUsdcTransfer, verifyUsdcSplitTransfer } from "../lib/solana.ts";
+import { buildSplitTransferTx } from "../lib/tx-builder.ts";
 
 export const providersRouter = Router();
+
+// POST /api/providers/build-register-tx — build serialized listing tx.
+const buildListingSchema = z.object({
+  wallet: z.string().regex(/^[1-9A-HJ-NP-Za-km-z]{32,44}$/, "invalid Solana address"),
+  rate: z.number().positive(),
+});
+
+providersRouter.post(
+  "/providers/build-register-tx",
+  asyncHandler(async (req, res) => {
+    const parsed = buildListingSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: "validation_failed", issues: parsed.error.issues });
+      return;
+    }
+    const { wallet, rate } = parsed.data;
+
+    const collateral = rate * 17.78;
+    const protocolFee = collateral * 0.007;
+
+    try {
+      const serializedTx = await buildSplitTransferTx(
+        wallet,
+        env.obscuraCollateralWallet,
+        collateral,
+        env.obscuraServiceWallet,
+        protocolFee
+      );
+      res.json({ serializedTx });
+    } catch (e) {
+      console.error("[solana-tx-builder] Failed to build listing tx:", e);
+      res.status(500).json({
+        error: "tx_build_failed",
+        message: e instanceof Error ? e.message : "failed to build transaction"
+      });
+    }
+  })
+);
 
 // POST /api/providers — register GPU capacity as a node operator.
 const providerSchema = z.object({
