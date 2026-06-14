@@ -23,6 +23,64 @@ import { Button } from "@/components/ui/button";
 import { shortHash, fmtAgo } from "@/lib/utils";
 import Link from "next/link";
 
+const AGENT_STARTER_PROMPT = `You are an autonomous AI Agent equipped with a Solana wallet and web capabilities. Your goal is to lease high-performance GPU compute capacity on the Obscura network programmatically.
+
+Obscura uses a secure Commit-Reveal auction mechanism and an on-chain Escrow contract (X402 Gate) for settlement. Follow these system instructions exactly:
+
+### 1. API Endpoint & Credentials
+- Base URL: https://api.obscuraonsol.com
+- Header: Include 'X-API-Key: <YOUR_API_KEY>' on all requests.
+- OpenAPI JSON Spec for reference: https://api.obscuraonsol.com/v1/agents/docs.json
+
+### 2. Step-by-Step Order Lifecycle
+
+#### Phase A: Commit Order
+1. Generate a random 32-byte hex string as your 'secret' (keep it private).
+2. Calculate the keccak-256 hash of your bid parameters:
+   commitHash = keccak256( priceMicro (8-byte Little Endian u64) || qty (8-byte Little Endian u64) || secret (32-byte bytes) )
+3. Submit the commit hash:
+   - Method: POST
+   - Route: /api/orders
+   - Body: { "gpuType": "NVIDIA H100 80GB", "commitHash": "0x<your_commit_hash>" }
+4. Store the returned 'id' (this is your order ID).
+
+#### Phase B: Reveal Bid
+1. Immediately or when the commit window closes, reveal your parameters:
+   - Method: POST
+   - Route: /api/orders/{id}/reveal
+   - Body: { "priceMicro": 1800000, "qty": 4, "secret": "0x<your_32_byte_secret>" }
+   *(where priceMicro is the USDC rate/hr * 1e6, and qty is lease duration in hours)*
+
+#### Phase C: Pay and Settle (X402 Gate)
+1. Periodically check order status:
+   - Method: GET
+   - Route: /api/orders/{id}
+2. If the response is HTTP 402 Payment Required:
+   - Read the payload to get payment details (e.g. amountUsdc, escrowWallet, paymentUrl).
+   - Fetch the base64-serialized Solana transaction to fund the escrow:
+     - Method: POST
+     - Route: /api/orders/{id}/build-settle-tx
+   - Sign the returned transaction using your private key and broadcast it to the Solana network to obtain the transaction signature (txSig).
+   - Activate the lease by submitting the signature:
+     - Method: POST
+     - Route: /api/orders/{id}/settle
+     - Body: { "txSig": "<your_transaction_signature>" }
+
+#### Phase D: Retrieve SSH Connection Credentials
+1. Call GET /api/orders/{id} again.
+2. Once verified, it will return HTTP 200 with SSH connection details:
+   {
+     "id": "order-id",
+     "status": "settled",
+     "connection": {
+       "host": "api.obscuraonsol.com",
+       "port": "22000",
+       "username": "root",
+       "password": "..."
+     }
+   }
+3. Connect via SSH using the provided credentials to execute your GPU workloads.`;
+
 export default function AgentPage() {
   const { wallet, connect } = useWallet();
   const [orders, setOrders] = useState<SessionOrder[]>([]);
@@ -30,6 +88,7 @@ export default function AgentPage() {
   const [stats, setStats] = useState<AgentStats | null>(null);
   const [loading, setLoading] = useState(false);
   const [copiedText, setCopiedText] = useState<string | null>(null);
+  const [showPromptModal, setShowPromptModal] = useState(false);
 
   const loadData = useCallback(async (w: string) => {
     setLoading(true);
@@ -232,8 +291,9 @@ export default function AgentPage() {
             </div>
           </div>
 
-          {/* Right Side: Active Credentials card */}
+          {/* Right Side: Credentials & Prompt Cards */}
           <div className="space-y-4">
+            {/* Active Credentials Card */}
             <div className="rounded-2xl border border-border bg-card/40 p-6 space-y-4">
               <div className="flex items-center justify-between border-b border-border/30 pb-3">
                 <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
@@ -282,9 +342,72 @@ export default function AgentPage() {
                 </div>
               )}
             </div>
+
+            {/* Starter Prompt Card */}
+            <div className="rounded-2xl border border-border bg-card/40 p-6 space-y-4">
+              <div className="flex items-center justify-between border-b border-border/30 pb-3">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                  <Bot className="h-4 w-4 text-primary" /> Starter Prompt
+                </h3>
+              </div>
+              <p className="text-[11px] leading-relaxed text-muted-foreground">
+                Equip your LLM agent with the complete instruction set, API lifecycle details, and schemas required to lease GPU capacity autonomously.
+              </p>
+              <Button onClick={() => setShowPromptModal(true)} className="w-full text-xs" variant="outline">
+                View Agent Prompt
+              </Button>
+            </div>
           </div>
         </FadeIn>
       </div>
+
+      {/* Starter Prompt Modal */}
+      {showPromptModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="relative w-full max-w-3xl rounded-2xl border border-border bg-[#0d0e12] p-6 shadow-2xl flex flex-col max-h-[85vh] animate-in fade-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="flex justify-between items-center border-b border-border/30 pb-4 mb-4">
+              <div>
+                <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  <Bot className="h-4 w-4 text-primary animate-pulse" /> Agent Starter Prompt
+                </h3>
+                <p className="text-[10px] text-muted-foreground mt-0.5">
+                  Copy this comprehensive system prompt to instruct your agent.
+                </p>
+              </div>
+              <button
+                onClick={() => setShowPromptModal(false)}
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors border border-border/60 hover:bg-card/30 rounded-lg px-2.5 py-1 cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="flex-1 overflow-y-auto bg-black/40 border border-border/30 rounded-xl p-4 font-mono text-[11px] leading-relaxed text-muted-foreground whitespace-pre-wrap select-text selection:bg-primary/20">
+              {AGENT_STARTER_PROMPT}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex justify-end items-center gap-3 border-t border-border/30 pt-4 mt-4">
+              <Button
+                onClick={() => handleCopy(AGENT_STARTER_PROMPT, "prompt-copy")}
+                className="text-xs flex items-center gap-2"
+              >
+                {copiedText === "prompt-copy" ? (
+                  <>
+                    <Check className="h-3.5 w-3.5 text-emerald-400" /> Copied Prompt!
+                  </>
+                ) : (
+                  <>
+                    <Copy className="h-3.5 w-3.5" /> Copy Prompt
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </AppFrame>
   );
 }
