@@ -280,7 +280,6 @@ function Ticker() {
     <div className="border-y border-border/60 bg-card/30 overflow-hidden">
       <div className="flex animate-marquee items-center gap-10 whitespace-nowrap py-3">
         {row.map((item, i) => {
-          const priceText = fmtUsdHr(item.price);
           const deltaText = `${item.delta > 0 ? "+" : ""}${item.delta.toFixed(1)}%`;
 
           return (
@@ -308,7 +307,10 @@ function Ticker() {
                   height={14}
                   className="rounded-full shrink-0"
                 />
-                <ReelAnimation text={priceText} className="font-mono text-foreground font-bold" />
+                <span className="inline-flex items-baseline gap-0.5">
+                  <ReelAnimation text={item.price.toFixed(4)} className="font-mono text-foreground font-bold" />
+                  <span className="font-mono text-muted-foreground/60 text-[10px]">/hr</span>
+                </span>
               </span>
 
               <span
@@ -345,14 +347,21 @@ function PhaseStrip() {
         {PHASES.map((p, i) => (
           <StaggerItem key={p.key}>
             <div className="group relative h-full overflow-hidden rounded-xl border border-border bg-card/40 p-6 transition-colors hover:border-primary/30">
-              <div className="flex items-center justify-between">
-                <div className="data text-[11px] uppercase tracking-[0.2em] text-primary">
-                  0{i + 1} / {p.key}
-                </div>
-                <p.icon className="h-4 w-4 text-muted-foreground/60 transition-colors group-hover:text-primary" />
+              {/* Background large fainted & tilted icon */}
+              <div className="absolute -bottom-8 -right-8 text-muted-foreground opacity-[0.03] transition-all duration-500 group-hover:scale-110 group-hover:rotate-[25deg] group-hover:text-primary group-hover:opacity-[0.07] pointer-events-none transform rotate-[15deg] shrink-0">
+                <p.icon className="h-28 w-28" />
               </div>
-              <div className="mt-4 text-xl font-semibold">{p.label}</div>
-              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{p.note}</p>
+
+              <div className="relative z-10">
+                <div className="flex items-center justify-between">
+                  <div className="data text-[11px] uppercase tracking-[0.2em] text-primary">
+                    0{i + 1} / {p.key}
+                  </div>
+                  <p.icon className="h-4 w-4 text-muted-foreground/60 transition-colors group-hover:text-primary" />
+                </div>
+                <div className="mt-4 text-xl font-semibold">{p.label}</div>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{p.note}</p>
+              </div>
               <div className="pointer-events-none absolute inset-x-0 -bottom-px h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
             </div>
           </StaggerItem>
