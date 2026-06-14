@@ -51,7 +51,8 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
   });
   const body = (await res.json().catch(() => ({}))) as Record<string, unknown>;
   if (!res.ok) {
-    throw new Error((body.error as string) ?? `request failed (${res.status})`);
+    const errorMsg = (body.message as string) || (body.error as string) || `request failed (${res.status})`;
+    throw new Error(errorMsg);
   }
   return body as T;
 }

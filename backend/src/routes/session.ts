@@ -248,7 +248,7 @@ sessionRouter.post(
     if (!ok) {
       res.status(400).json({
         error: "payment_verification_failed",
-        message: `Failed to verify payment of ${totalAmount.toFixed(4)} USDC to provider and protocol fee of ${feeAmount.toFixed(4)} USDC to the service wallet.`,
+        message: `Unable to verify the lease payment of ${totalAmount.toFixed(4)} USDC and protocol fee of ${feeAmount.toFixed(4)} USDC on-chain. Please ensure the transaction signature is correct and has successfully processed on Solana.`,
       });
       return;
     }

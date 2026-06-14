@@ -95,7 +95,7 @@ providersRouter.post(
     if (!ok) {
       res.status(400).json({
         error: "collateral_verification_failed",
-        message: `Failed to verify collateral payment of ${stakeAmount} USDC and protocol fee of ${feeAmount.toFixed(4)} USDC to their respective wallets.`,
+        message: `Unable to verify the collateral payment of ${stakeAmount} USDC and protocol fee of ${feeAmount.toFixed(4)} USDC on-chain. Please ensure the transaction signature is correct, that the transaction has successfully processed on Solana, and that your wallet has enough USDC.`,
       });
       return;
     }
