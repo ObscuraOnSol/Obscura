@@ -3,7 +3,7 @@ import "./globals.css";
 import { Providers } from "@/components/providers";
 import { Analytics } from "@vercel/analytics/next";
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://obscuraonsol.com";
+const SITE_URL = "https://obscuraonsol.com";
 const OG_DESCRIPTION =
   "A dark pool for AI/GPU compute on Solana. No one sees what you buy, what you pay, or when.";
 
@@ -47,7 +47,13 @@ export const metadata: Metadata = {
     images: ["/banner.png"],
     site: "@obscuraonsol",
   },
-  icons: { icon: "/logo.png" },
+  icons: {
+    icon: [
+      { url: "/logo.png", type: "image/png" }
+    ],
+    shortcut: "/logo.png",
+    apple: "/logo.png",
+  },
 };
 
 export default function RootLayout({
