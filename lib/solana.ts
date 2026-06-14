@@ -9,7 +9,7 @@ export const getUsdcMint = () => {
   if (network === "mainnet" || network === "mainnet-beta") {
     return process.env.NEXT_PUBLIC_USDC_MINT || "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
   }
-  return process.env.NEXT_PUBLIC_USDC_MINT_DEVNET || "Gh9ZwEmd5Tg4Pq9d9Kh7X4T6PHW3cWUKAdJ1z7X3J42s";
+  return process.env.NEXT_PUBLIC_USDC_MINT_DEVNET || "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU";
 };
 
 export function getAssociatedTokenAddress(mint: PublicKey, owner: PublicKey): PublicKey {
