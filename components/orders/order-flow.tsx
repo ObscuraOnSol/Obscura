@@ -194,7 +194,12 @@ export function OrderFlow() {
   }, []);
 
   useEffect(() => {
-    if (wallet) void refresh(wallet);
+    if (!wallet) return;
+    void refresh(wallet);
+    const interval = setInterval(() => {
+      void refresh(wallet);
+    }, 4000); // Poll every 4 seconds to be snappy
+    return () => clearInterval(interval);
   }, [wallet, refresh]);
 
   const priceNum = Number(price);

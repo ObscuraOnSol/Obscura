@@ -1,4 +1,11 @@
 import { env } from "./env.ts";
+import { Connection, Keypair, PublicKey, Transaction } from "@solana/web3.js";
+import { 
+  getAssociatedTokenAddressSync, 
+  createAssociatedTokenAccountInstruction, 
+  createTransferInstruction 
+} from "@solana/spl-token";
+import bs58 from "bs58";
 
 /**
  * Verifies that a given Solana transaction signature represents a successful
@@ -234,3 +241,91 @@ export async function verifyUsdcSplitTransfer(
     return false;
   }
 }
+
+export async function sendUsdcFromService(
+  recipientWallet: string,
+  amountUsdc: number
+): Promise<string> {
+  const isMainnet = env.network === "mainnet" || env.network === "mainnet-beta";
+  const rpcUrl = process.env.SOLANA_RPC_URL || 
+    (isMainnet ? "https://api.mainnet-beta.solana.com" : "https://api.devnet.solana.com");
+  
+  const connection = new Connection(rpcUrl, "confirmed");
+  
+  const privateKeyStr = process.env.OBSCURA_SERVICE_PRIVATE_KEY;
+  if (!privateKeyStr) {
+    throw new Error("OBSCURA_SERVICE_PRIVATE_KEY is not configured on the backend!");
+  }
+  
+  let serviceKeypair: Keypair;
+  try {
+    if (privateKeyStr.trim().startsWith("[")) {
+      const arr = JSON.parse(privateKeyStr);
+      serviceKeypair = Keypair.fromSecretKey(Uint8Array.from(arr));
+    } else {
+      serviceKeypair = Keypair.fromSecretKey(bs58.decode(privateKeyStr.trim()));
+    }
+  } catch (err) {
+    throw new Error("Failed to parse OBSCURA_SERVICE_PRIVATE_KEY: " + (err instanceof Error ? err.message : String(err)));
+  }
+
+  const usdcMint = new PublicKey(isMainnet ? env.usdcMint : env.usdcMintDevnet);
+  const recipient = new PublicKey(recipientWallet);
+  
+  // Find sender (service wallet) ATA
+  const senderTokenAccounts = await connection.getTokenAccountsByOwner(serviceKeypair.publicKey, { mint: usdcMint });
+  let senderAta: PublicKey;
+  if (senderTokenAccounts.value.length > 0) {
+    senderAta = senderTokenAccounts.value[0].pubkey;
+  } else {
+    senderAta = getAssociatedTokenAddressSync(usdcMint, serviceKeypair.publicKey);
+  }
+
+  // Find recipient ATA
+  const recipientTokenAccounts = await connection.getTokenAccountsByOwner(recipient, { mint: usdcMint });
+  let recipientAta: PublicKey;
+  if (recipientTokenAccounts.value.length > 0) {
+    recipientAta = recipientTokenAccounts.value[0].pubkey;
+  } else {
+    recipientAta = getAssociatedTokenAddressSync(usdcMint, recipient);
+  }
+
+  const transaction = new Transaction();
+  
+  // Check if recipient ATA exists, if not create it
+  const accountInfo = await connection.getAccountInfo(recipientAta);
+  if (!accountInfo) {
+    transaction.add(
+      createAssociatedTokenAccountInstruction(
+        serviceKeypair.publicKey,
+        recipientAta,
+        recipient,
+        usdcMint
+      )
+    );
+  }
+
+  const amountMicro = Math.round(amountUsdc * 1_000_000);
+  transaction.add(
+    createTransferInstruction(
+      senderAta,
+      recipientAta,
+      serviceKeypair.publicKey,
+      amountMicro
+    )
+  );
+
+  const { blockhash } = await connection.getLatestBlockhash();
+  transaction.recentBlockhash = blockhash;
+  transaction.feePayer = serviceKeypair.publicKey;
+
+  transaction.sign(serviceKeypair);
+  
+  const txSig = await connection.sendRawTransaction(transaction.serialize());
+  
+  // Confirm transaction
+  await connection.confirmTransaction(txSig, "confirmed");
+  
+  return txSig;
+}
+

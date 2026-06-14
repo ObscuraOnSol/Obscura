@@ -8,7 +8,7 @@ import { computeCommitHash, commitMatches } from "../lib/commit.ts";
 import type { SessionRequest } from "../lib/session.ts";
 import { env } from "../lib/env.ts";
 import { verifyUsdcTransfer, verifyUsdcSplitTransfer } from "../lib/solana.ts";
-import { buildSplitTransferTx } from "../lib/tx-builder.ts";
+import { buildSplitTransferTx, buildSingleTransferTx } from "../lib/tx-builder.ts";
 
 /**
  * Browser/session order API for wallet-connected users (as opposed to the
@@ -166,14 +166,13 @@ sessionRouter.post(
     const price = parseFloat(order.clearing_price);
     const totalAmount = price * order.hours;
     const feeAmount = totalAmount * 0.005;
+    const combinedAmount = totalAmount + feeAmount;
 
     try {
-      const serializedTx = await buildSplitTransferTx(
+      const serializedTx = await buildSingleTransferTx(
         w,
-        order.assigned_provider_wallet,
-        totalAmount,
         env.obscuraServiceWallet,
-        feeAmount
+        combinedAmount
       );
       res.json({ serializedTx });
     } catch (e) {
@@ -231,31 +230,35 @@ sessionRouter.post(
       return;
     }
 
-    // Verify buyer's payment to the provider and 0.5% protocol fee to the service wallet
+    // Verify buyer's payment of lease cost + protocol fee to the service wallet acting as escrow
     const price = parseFloat(order.clearing_price);
     const totalAmount = price * order.hours;
     const feeAmount = totalAmount * 0.005;
+    const combinedAmount = totalAmount + feeAmount;
 
-    const ok = await verifyUsdcSplitTransfer(
+    const ok = await verifyUsdcTransfer(
       txSig,
       w,
-      order.assigned_provider_wallet,
-      totalAmount,
       env.obscuraServiceWallet,
-      feeAmount,
+      combinedAmount,
     );
 
     if (!ok) {
       res.status(400).json({
         error: "payment_verification_failed",
-        message: `Unable to verify the lease payment of ${totalAmount.toFixed(4)} USDC and protocol fee of ${feeAmount.toFixed(4)} USDC on-chain. Please ensure the transaction signature is correct and has successfully processed on Solana.`,
+        message: `Unable to verify the lease payment of ${combinedAmount.toFixed(4)} USDC on-chain. Please ensure the transaction signature is correct and has successfully processed on Solana.`,
       });
       return;
     }
 
-    // Success! Update status to settled
+    // Success! Update status to settled and initialize escrow payout tracking
     await query(
-      `UPDATE orders SET status = 'settled' WHERE id = $1`,
+      `UPDATE orders 
+       SET status = 'settled', 
+           lease_started_at = now(), 
+           last_payout_at = now(),
+           payouts_completed = 0 
+       WHERE id = $1`,
       [id]
     );
 

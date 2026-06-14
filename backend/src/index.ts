@@ -5,6 +5,7 @@ import { env } from "./lib/env.ts";
 import { migrate } from "./db/migrate.ts";
 import { startMatchingEngine } from "./services/matching.ts";
 import { startHealthChecker } from "./services/health.ts";
+import { startEscrowManager } from "./services/escrow.ts";
 
 async function main() {
   if (env.databaseUrl) {
@@ -25,6 +26,7 @@ async function main() {
   if (env.databaseUrl) {
     startMatchingEngine();
     startHealthChecker();
+    startEscrowManager();
   }
 }
 

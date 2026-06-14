@@ -101,3 +101,67 @@ export async function buildSplitTransferTx(
   
   return serialized.toString("base64");
 }
+
+export async function buildSingleTransferTx(
+  payerWallet: string,
+  recipientAddress: string,
+  amountUsdc: number
+): Promise<string> {
+  const isMainnet = env.network === "mainnet" || env.network === "mainnet-beta";
+  const rpcUrl = process.env.SOLANA_RPC_URL || 
+    (isMainnet ? "https://api.mainnet-beta.solana.com" : "https://api.devnet.solana.com");
+  
+  const connection = new Connection(rpcUrl, "confirmed");
+  const payer = new PublicKey(payerWallet);
+  const mint = getUsdcMint();
+  const recipient = new PublicKey(recipientAddress);
+  
+  // Find sender token account dynamically
+  const tokenAccounts = await connection.getTokenAccountsByOwner(payer, { mint });
+  let senderAta: PublicKey;
+  if (tokenAccounts.value.length > 0) {
+    senderAta = tokenAccounts.value[0].pubkey;
+  } else {
+    senderAta = getAssociatedTokenAddressSync(mint, payer);
+  }
+
+  const recipientAta = getAssociatedTokenAddressSync(mint, recipient);
+  
+  const transaction = new Transaction();
+  
+  // Check if recipient ATA exists
+  const accountInfo = await connection.getAccountInfo(recipientAta);
+  if (!accountInfo) {
+    transaction.add(
+      createAssociatedTokenAccountInstruction(
+        payer,
+        recipientAta,
+        recipient,
+        mint
+      )
+    );
+  }
+  
+  const amountMicro = Math.round(amountUsdc * 1_000_000);
+  
+  transaction.add(
+    createTransferInstruction(
+      senderAta,
+      recipientAta,
+      payer,
+      amountMicro
+    )
+  );
+  
+  const latestBlockhash = await connection.getLatestBlockhash();
+  transaction.recentBlockhash = latestBlockhash.blockhash;
+  transaction.feePayer = payer;
+  
+  const serialized = transaction.serialize({
+    requireAllSignatures: false,
+    verifySignatures: false
+  });
+  
+  return serialized.toString("base64");
+}
+
