@@ -64,8 +64,15 @@ The UI always makes the current phase explicit, so users know what is — and is
 | GET | `/api/settlements` | Recent batch settlements (public-safe). |
 | GET | `/api/providers` | GPU provider listings. |
 | GET | `/api/orders/metrics` | Volume, fill rates, GPU breakdown. |
+| GET | `/session/agent/stats` | Dynamic agent rolling spend and request metrics. |
+| GET | `/v1/agent/docs` | Interactive Swagger API documentation. |
+| GET | `/v1/agent/docs.json` | OpenAPI JSON specification. |
 | POST | `/api/auth/nonce` · `/api/auth/verify` | Sign-In-With-Solana. |
 | POST/GET | `/api/orders` *(X-API-Key)* | Agent order API — submit / list / cancel. |
+| GET | `/api/orders/:id` *(X-API-Key)* | Retrieve credentials (gated by X402 Payment Required if matched but unpaid). |
+| POST | `/api/orders/:id/reveal` *(X-API-Key)* | Reveal price, quantity, and salt to enter auction. |
+| POST | `/api/orders/:id/build-settle-tx` *(X-API-Key)* | Build the on-chain settlement transaction. |
+| POST | `/api/orders/:id/settle` *(X-API-Key)* | Submit settlement transaction signature to release credentials. |
 
 ## Repo structure
 
@@ -79,6 +86,7 @@ obscura/
     src/db/             pg pool + hand-rolled migration runner
     db/migrations/      versioned SQL
   contract/             Solana Anchor programs — obscura_pool (commit-reveal); escrow interface-only
+  gpu-server/           Mock GPU compute node running SSH and web terminal for local dev
   .github/workflows/    backend + frontend CI
 ```
 
@@ -100,7 +108,7 @@ cp .env.example .env        # fill in values
 bun run dev                 # http://localhost:3000
 
 # 2. Backend
-docker compose up -d        # local Postgres on :5432
+docker compose up -d        # local Postgres on :5432 + mock GPU node on :2222/:7681
 cd backend
 bun install
 cp .env.example .env        # DATABASE_URL etc.
