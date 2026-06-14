@@ -308,7 +308,7 @@ function Ticker() {
                   className="rounded-full shrink-0"
                 />
                 <span className="inline-flex items-baseline gap-0.5">
-                  <ReelAnimation text={item.price.toFixed(4)} className="font-mono text-foreground font-bold" />
+                  <TextScramble text={item.price.toFixed(4)} duration={400} delay={0} className="font-mono text-foreground font-bold" />
                   <span className="font-mono text-muted-foreground/60 text-[10px]">/hr</span>
                 </span>
               </span>
@@ -321,7 +321,7 @@ function Ticker() {
                     : "text-destructive bg-destructive/10 border border-destructive/20"
                 )}
               >
-                <ReelAnimation text={deltaText} />
+                <TextScramble text={deltaText} duration={400} delay={0} />
               </span>
             </span>
           );
@@ -347,9 +347,9 @@ function PhaseStrip() {
         {PHASES.map((p, i) => (
           <StaggerItem key={p.key}>
             <div className="group relative h-full overflow-hidden rounded-xl border border-border bg-card/40 p-6 transition-colors hover:border-primary/30">
-              {/* Background large fainted & tilted icon */}
-              <div className="absolute -bottom-8 -right-8 text-muted-foreground opacity-[0.03] transition-all duration-500 group-hover:scale-110 group-hover:rotate-[25deg] group-hover:text-primary group-hover:opacity-[0.07] pointer-events-none transform rotate-[15deg] shrink-0">
-                <p.icon className="h-28 w-28" />
+              {/* Background icon watermark: tilted, scale-up, and green-tinted on hover */}
+              <div className="absolute -bottom-5 -right-5 pointer-events-none opacity-[0.06] text-primary transition-all duration-300 group-hover:scale-110 group-hover:rotate-[-6deg] group-hover:opacity-[0.12] ease-out shrink-0">
+                <p.icon className="h-24 w-24 rotate-[-12deg]" />
               </div>
 
               <div className="relative z-10">

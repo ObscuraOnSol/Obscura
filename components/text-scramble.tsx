@@ -62,28 +62,36 @@ export function TextScramble({
     frameRef.current = requestAnimationFrame(tick);
   }, [text, duration]);
 
-  // Play on mount with delay
+  // Play on mount/update
   useEffect(() => {
-    if (hasPlayedRef.current) return;
-    hasPlayedRef.current = true;
+    if (!hasPlayedRef.current) {
+      hasPlayedRef.current = true;
+      
+      // Start scrambled immediately on mount
+      const chars = text.split("");
+      setDisplay(
+        chars
+          .map((c) => (c === " " ? " " : CHARS[Math.floor(Math.random() * CHARS.length)]))
+          .join("")
+      );
 
-    // Start scrambled immediately
-    const chars = text.split("");
-    setDisplay(
-      chars
-        .map((c) => (c === " " ? " " : CHARS[Math.floor(Math.random() * CHARS.length)]))
-        .join("")
-    );
+      const timeout = setTimeout(() => {
+        scramble();
+      }, delay);
 
-    const timeout = setTimeout(() => {
+      return () => {
+        clearTimeout(timeout);
+        if (frameRef.current) cancelAnimationFrame(frameRef.current);
+      };
+    } else {
+      // Scramble immediately on text update
       scramble();
-    }, delay);
+    }
 
     return () => {
-      clearTimeout(timeout);
       if (frameRef.current) cancelAnimationFrame(frameRef.current);
     };
-  }, [scramble, text, delay]);
+  }, [text, scramble, delay]);
 
   return (
     <span
