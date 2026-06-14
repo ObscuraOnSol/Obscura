@@ -34,3 +34,8 @@ contract/test-ledger/
 .vercel
 coverage/
 *.tsbuildinfo
+
+# --- Local Tech Notes & Prompts ---
+tech-updates.md
+tech-updates-social.txt
+next-prompt.md
