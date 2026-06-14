@@ -101,11 +101,12 @@ export function OrderFlow() {
   const { connection } = useConnection();
   const { signedIn, signIn } = useSession();
   const [orders, setOrders] = useState<SessionOrder[]>([]);
-  const [gpuTypes, setGpuTypes] = useState<string[]>(GPU_TYPES);
-  const [gpuType, setGpuType] = useState(GPU_TYPES[0]);
-  const [price, setPrice] = useState("1.8000");
+  const [gpuTypes, setGpuTypes] = useState<string[]>([]);
+  const [gpuType, setGpuType] = useState("");
   const [qty, setQty] = useState("1");
+  const [price, setPrice] = useState("1.8000");
   const [activeProviders, setActiveProviders] = useState<ProviderRow[]>([]);
+  const [loadingGpus, setLoadingGpus] = useState(true);
 
   const computedPrice = useMemo(() => {
     const matches = activeProviders.filter((p) => p.gpuType === gpuType);
@@ -158,6 +159,7 @@ export function OrderFlow() {
   useEffect(() => setSecret(randomSecretHex()), []);
 
   useEffect(() => {
+    setLoadingGpus(true);
     marketApi.providers()
       .then(({ providers }) => {
         const active = providers.filter((p) => p.status === "active");
@@ -165,13 +167,16 @@ export function OrderFlow() {
         const activeGpus = Array.from(
           new Set(active.map((p) => p.gpuType))
         );
+        setGpuTypes(activeGpus);
         if (activeGpus.length > 0) {
-          setGpuTypes(activeGpus);
           setGpuType((prev) => (activeGpus.includes(prev) ? prev : activeGpus[0]));
         }
       })
       .catch((err) => {
         console.error("Failed to fetch GPU types from marketplace:", err);
+      })
+      .finally(() => {
+        setLoadingGpus(false);
       });
   }, []);
 
@@ -304,119 +309,136 @@ export function OrderFlow() {
             <WalletChip wallet={wallet} onConnect={connect} />
           </div>
 
-          <div className="mt-6 space-y-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="gpu" className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                <Cpu className="h-3.5 w-3.5 text-primary" /> GPU type
-              </Label>
-              <select
-                id="gpu"
-                value={gpuType}
-                onChange={(e) => setGpuType(e.target.value)}
-                className="data flex h-10 w-full rounded-md border border-border bg-background/60 px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                {gpuTypes.map((g) => (
-                  <option key={g} value={g}>
-                    {g}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="price" className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                  <Coins className="h-3.5 w-3.5 text-primary" /> Price ($/hr)
-                </Label>
-                <div className="relative">
-                  <Input
-                    id="price"
-                    className="data pr-10 bg-background/20 text-muted-foreground cursor-not-allowed opacity-80"
-                    disabled
-                    inputMode="decimal"
-                    value={price}
-                    onChange={(e) => setPrice(e.target.value)}
-                  />
-                  <img src="/usdc_logo.png" alt="USDC" className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 object-contain rounded-full opacity-60" />
-                </div>
+          <div className="mt-6">
+            {loadingGpus ? (
+              <div className="flex flex-col items-center justify-center py-12 space-y-3">
+                <Loader2 className="animate-spin h-6 w-6 text-primary" />
+                <span className="text-xs text-muted-foreground">Checking marketplace depth...</span>
               </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="qty" className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                  <Clock className="h-3.5 w-3.5 text-primary" /> Duration (Hours)
-                </Label>
-                <Input
-                  id="qty"
-                  className="data"
-                  inputMode="numeric"
-                  value={qty}
-                  onChange={(e) => setQty(e.target.value)}
-                />
+            ) : gpuTypes.length === 0 ? (
+              <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-background/25 p-8 text-center text-xs text-muted-foreground space-y-3">
+                <AlertTriangle className="h-6 w-6 text-amber-500 shrink-0 animate-bounce" />
+                <div className="font-semibold text-foreground text-sm">No active GPUs available</div>
+                <p className="text-[11px] text-muted-foreground/70 leading-relaxed max-w-[280px]">
+                  There are currently no active GPU nodes listed in the marketplace. Please check back later or list your own GPU capacity as a seller to get started.
+                </p>
               </div>
-            </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="gpu" className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                    <Cpu className="h-3.5 w-3.5 text-primary" /> GPU type
+                  </Label>
+                  <select
+                    id="gpu"
+                    value={gpuType}
+                    onChange={(e) => setGpuType(e.target.value)}
+                    className="data flex h-10 w-full rounded-md border border-border bg-background/60 px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    {gpuTypes.map((g) => (
+                      <option key={g} value={g}>
+                        {g}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-            {/* Lease Estimate & Protocol Fee Preview */}
-            {validInputs && (
-              <div className="rounded-xl border border-primary/20 bg-primary/5 p-3.5 space-y-2.5 text-xs">
-                <div className="flex items-center justify-between text-[11px] uppercase tracking-wider text-muted-foreground">
-                  <span>Order Cost Estimate</span>
-                  <span className="text-primary font-semibold">USDC</span>
-                </div>
-                
-                <div className="space-y-1.5 pt-1 border-t border-primary/10">
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Lease cost:</span>
-                    <span className="text-foreground font-mono">
-                      {(priceNum * qtyNum).toFixed(4)} USDC
-                    </span>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="price" className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                      <Coins className="h-3.5 w-3.5 text-primary" /> Price ($/hr)
+                    </Label>
+                    <div className="relative">
+                      <Input
+                        id="price"
+                        className="data pr-10 bg-background/20 text-muted-foreground cursor-not-allowed opacity-80"
+                        disabled
+                        inputMode="decimal"
+                        value={price}
+                        onChange={(e) => setPrice(e.target.value)}
+                      />
+                      <img src="/usdc_logo.png" alt="USDC" className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 object-contain rounded-full opacity-60" />
+                    </div>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground flex items-center gap-1">
-                      Protocol fee (0.5%):
-                      <span className="text-[10px] text-muted-foreground/60 font-normal">(charged at settlement)</span>
-                    </span>
-                    <span className="text-foreground font-mono">
-                      {(priceNum * qtyNum * 0.005).toFixed(4)} USDC
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between font-bold pt-1.5 border-t border-primary/10 text-primary">
-                    <span>Total amount to pay:</span>
-                    <span className="flex items-center gap-1 font-mono">
-                      <img src="/usdc_logo.png" alt="USDC" className="h-3.5 w-3.5 object-contain rounded-full" />
-                      {(priceNum * qtyNum * 1.005).toFixed(4)} USDC
-                    </span>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="qty" className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                      <Clock className="h-3.5 w-3.5 text-primary" /> Duration (Hours)
+                    </Label>
+                    <Input
+                      id="qty"
+                      className="data"
+                      inputMode="numeric"
+                      value={qty}
+                      onChange={(e) => setQty(e.target.value)}
+                    />
                   </div>
                 </div>
-                <div className="text-[9px] text-muted-foreground/75 leading-normal bg-background/30 rounded p-2 border border-border/40">
-                  ℹ️ Note: 0.5% is charged as a protocol fee on the total amount you pay to settle the lease.
+
+                {/* Lease Estimate & Protocol Fee Preview */}
+                {validInputs && (
+                  <div className="rounded-xl border border-primary/20 bg-primary/5 p-3.5 space-y-2.5 text-xs">
+                    <div className="flex items-center justify-between text-[11px] uppercase tracking-wider text-muted-foreground">
+                      <span>Order Cost Estimate</span>
+                      <span className="text-primary font-semibold">USDC</span>
+                    </div>
+                    
+                    <div className="space-y-1.5 pt-1 border-t border-primary/10">
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">Lease cost:</span>
+                        <span className="text-foreground font-mono">
+                          {(priceNum * qtyNum).toFixed(4)} USDC
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground flex items-center gap-1">
+                          Protocol fee (0.5%):
+                          <span className="text-[10px] text-muted-foreground/60 font-normal">(charged at settlement)</span>
+                        </span>
+                        <span className="text-foreground font-mono">
+                          {(priceNum * qtyNum * 0.005).toFixed(4)} USDC
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between font-bold pt-1.5 border-t border-primary/10 text-primary">
+                        <span>Total amount to pay:</span>
+                        <span className="flex items-center gap-1 font-mono">
+                          <img src="/usdc_logo.png" alt="USDC" className="h-3.5 w-3.5 object-contain rounded-full" />
+                          {(priceNum * qtyNum * 1.005).toFixed(4)} USDC
+                        </span>
+                      </div>
+                    </div>
+                    <div className="text-[9px] text-muted-foreground/75 leading-normal bg-background/30 rounded p-2 border border-border/40">
+                      ℹ️ Note: 0.5% is charged as a protocol fee on the total amount you pay to settle the lease.
+                    </div>
+                  </div>
+                )}
+
+                {/* Commit hash preview (the only thing that hits the chain) */}
+                <div className="rounded-md border border-dashed border-border bg-background/40 p-3">
+                  <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.15em] text-muted-foreground">
+                    <Lock className="h-3 w-3" /> Commit hash (keccak256)
+                  </div>
+                  <div className="data mt-1.5 break-all text-xs text-primary">
+                    {previewHash ? `0x${previewHash}` : "-"}
+                  </div>
+                  <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground/70">
+                    Computed client-side from price, rent duration, and a random secret. Only this
+                    hash is submitted, meaning your size and price stay private until reveal.
+                  </p>
                 </div>
+
+                <Button onClick={handleCommit} disabled={busy} className="w-full" size="lg">
+                  {busy ? <Loader2 className="animate-spin" /> : <Lock />}
+                  {!wallet ? "Connect wallet" : "Commit order"}
+                </Button>
+
+                {error ? (
+                  <div className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-xs text-destructive">
+                    <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                    <span>{error}</span>
+                  </div>
+                ) : null}
               </div>
             )}
-
-            {/* Commit hash preview (the only thing that hits the chain) */}
-            <div className="rounded-md border border-dashed border-border bg-background/40 p-3">
-              <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.15em] text-muted-foreground">
-                <Lock className="h-3 w-3" /> Commit hash (keccak256)
-              </div>
-              <div className="data mt-1.5 break-all text-xs text-primary">
-                {previewHash ? `0x${previewHash}` : "-"}
-              </div>
-              <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground/70">
-                Computed client-side from price, rent duration, and a random secret. Only this
-                hash is submitted, meaning your size and price stay private until reveal.
-              </p>
-            </div>
-
-            <Button onClick={handleCommit} disabled={busy} className="w-full" size="lg">
-              {busy ? <Loader2 className="animate-spin" /> : <Lock />}
-              {!wallet ? "Connect wallet" : "Commit order"}
-            </Button>
-
-            {error ? (
-              <div className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-xs text-destructive">
-                <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                <span>{error}</span>
-              </div>
-            ) : null}
           </div>
         </div>
       </FadeIn>

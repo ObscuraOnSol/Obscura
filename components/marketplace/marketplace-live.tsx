@@ -104,7 +104,13 @@ export function MarketplaceLive() {
             <DataError message={error} />
           ) : !rows ? (
             <SkeletonGrid />
-          ) : rows.filter((p) => p.gpuType.toLowerCase().includes(searchQuery.toLowerCase())).length === 0 ? null : (
+          ) : rows.filter((p) => p.gpuType.toLowerCase().includes(searchQuery.toLowerCase())).length === 0 ? (
+            <FadeIn>
+              <div className="flex min-h-[20vh] flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card/10 p-8 text-center text-sm text-muted-foreground">
+                No active GPU providers match your search.
+              </div>
+            </FadeIn>
+          ) : (
             <StaggerContainer className="grid gap-4 sm:grid-cols-2" staggerDelay={0.07}>
               {rows
                 .filter((p) => p.gpuType.toLowerCase().includes(searchQuery.toLowerCase()))
