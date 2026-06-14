@@ -387,7 +387,7 @@ function ProvideGpuForm({ onRegistered }: { onRegistered: () => void }) {
                   className="flex h-10 w-full rounded-md border border-border bg-background/60 pl-3 pr-12 py-1.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                   required
                 />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-bold text-muted-foreground">USDC</span>
+                <img src="/usdc_logo.png" alt="USDC" className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 object-contain rounded-full" />
               </div>
             </div>
 
@@ -405,7 +405,7 @@ function ProvideGpuForm({ onRegistered }: { onRegistered: () => void }) {
                   className="flex h-10 w-full rounded-md border border-border bg-background/60 pl-3 pr-12 py-1.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                   required
                 />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-bold text-muted-foreground">USDC</span>
+                <img src="/usdc_logo.png" alt="USDC" className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 object-contain rounded-full" />
               </div>
             </div>
           </div>
