@@ -16,9 +16,15 @@ import { ordersRouter } from "./routes/orders.ts";
 import { sessionRouter } from "./routes/session.ts";
 import { keysRouter } from "./routes/keys.ts";
 import { authRouter } from "./routes/auth.ts";
+import { swaggerHtml } from "./lib/swagger.ts";
 
 /** Builds the Express app and wires routes. No server.listen here — see index.ts. */
 export function createApp() {
+  const app = createAppWithoutDocs();
+  return app;
+}
+
+export function createAppWithoutDocs() {
   const app = express();
 
   app.use(helmet());
@@ -34,7 +40,11 @@ export function createApp() {
 
   // Friendly index + top-level health check (handy as Render's Health Check Path).
   app.get("/", (_req, res) => {
-    res.json({ name: "Obscura API", status: "ok", health: "/health" });
+    res.json({ name: "Obscura API", status: "ok", health: "/health", docs: "/v1/agent/docs" });
+  });
+  app.get("/v1/agent/docs", (_req, res) => {
+    res.setHeader("Content-Type", "text/html");
+    res.send(swaggerHtml);
   });
   app.use(healthRouter); // GET /health
 

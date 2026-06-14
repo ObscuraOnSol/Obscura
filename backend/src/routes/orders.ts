@@ -4,6 +4,10 @@ import { z } from "zod";
 import { query } from "../db/index.ts";
 import { asyncHandler } from "../lib/async.ts";
 import { resolveApiKey, type Tier } from "../lib/apiKey.ts";
+import { env } from "../lib/env.ts";
+import { verifyUsdcTransfer } from "../lib/solana.ts";
+import { buildSingleTransferTx } from "../lib/tx-builder.ts";
+import { computeCommitHash, commitMatches } from "../lib/commit.ts";
 
 export const ordersRouter = Router();
 
@@ -85,7 +89,7 @@ ordersRouter.post(
       `INSERT INTO orders (wallet, gpu_type, commit_hash, status)
        VALUES ($1, $2, $3, 'committed')
        RETURNING id, ts`,
-      [req.agent!.ownerWallet, gpuType, commitHash],
+      [req.agent!.ownerWallet, gpuType, commitHash.replace(/^0x/, "")],
     );
     res.status(201).json({
       id: rows[0].id,
@@ -147,3 +151,339 @@ ordersRouter.post(
     res.json({ id: req.params.id, status: "cancelled" });
   }),
 );
+
+// POST /api/orders/:id/reveal — reveal phase.
+const revealSchema = z.object({
+  priceMicro: z.number().int().nonnegative(),
+  qty: z.number().int().positive(),
+  secret: z.string().regex(/^(0x)?[0-9a-fA-F]{64}$/, "secret must be 32 bytes"),
+});
+
+ordersRouter.post(
+  "/orders/:id/reveal",
+  requireApiKey,
+  asyncHandler(async (req: AuthedRequest, res) => {
+    const parsed = revealSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: "validation_failed", issues: parsed.error.issues });
+      return;
+    }
+    const w = req.agent!.ownerWallet;
+    const { priceMicro, qty, secret } = parsed.data;
+    const id = String(req.params.id);
+
+    const { rows } = await query<{
+      commit_hash: string;
+      status: string;
+      gpu_type: string;
+    }>(
+      `SELECT commit_hash, status, gpu_type FROM orders WHERE id = $1 AND wallet = $2`,
+      [id, w],
+    );
+    if (rows.length === 0) {
+      res.status(404).json({ error: "order not found" });
+      return;
+    }
+    if (rows[0].status !== "committed") {
+      res.status(409).json({ error: `cannot reveal an order in status '${rows[0].status}'` });
+      return;
+    }
+
+    // Enforce the commit-reveal invariant
+    const expected = computeCommitHash(BigInt(priceMicro), BigInt(qty), secret);
+    if (!commitMatches(expected, rows[0].commit_hash)) {
+      res.status(400).json({ error: "reveal does not match committed hash" });
+      return;
+    }
+
+    await query(
+      `UPDATE orders SET revealed = TRUE, status = 'revealed' WHERE id = $1 AND wallet = $2`,
+      [id, w],
+    );
+    await query(
+      `INSERT INTO order_intents (order_id, wallet, gpu_type, price_micro, qty)
+       VALUES ($1, $2, $3, $4, $5)
+       ON CONFLICT (order_id) DO UPDATE
+         SET price_micro = EXCLUDED.price_micro, qty = EXCLUDED.qty`,
+      [id, w, rows[0].gpu_type, priceMicro, qty],
+    );
+    res.json({ id, status: "revealed", phase: "REVEALED" });
+  }),
+);
+
+// POST /api/orders/:id/build-settle-tx — build serialized settlement tx
+ordersRouter.post(
+  "/orders/:id/build-settle-tx",
+  requireApiKey,
+  asyncHandler(async (req: AuthedRequest, res) => {
+    const w = req.agent!.ownerWallet;
+    const id = String(req.params.id);
+
+    const { rows } = await query<{
+      status: string;
+      assigned_provider_wallet: string | null;
+      clearing_price: string | null;
+      hours: number | null;
+    }>(
+      `SELECT status, assigned_provider_wallet, clearing_price, hours 
+       FROM orders WHERE id = $1 AND wallet = $2`,
+      [id, w],
+    );
+
+    if (rows.length === 0) {
+      res.status(404).json({ error: "order not found" });
+      return;
+    }
+
+    const order = rows[0];
+    if (order.status !== "matched") {
+      res.status(400).json({ error: `cannot settle order in status '${order.status}'` });
+      return;
+    }
+
+    if (!order.assigned_provider_wallet || !order.clearing_price || !order.hours) {
+      res.status(400).json({ error: "order assignment details missing" });
+      return;
+    }
+
+    const price = parseFloat(order.clearing_price);
+    const totalAmount = price * order.hours;
+    const feeAmount = totalAmount * 0.005;
+    const combinedAmount = totalAmount + feeAmount;
+
+    try {
+      const serializedTx = await buildSingleTransferTx(
+        w,
+        env.obscuraServiceWallet,
+        combinedAmount
+      );
+      res.json({ serializedTx });
+    } catch (e) {
+      console.error("[solana-tx-builder] Failed to build settlement tx:", e);
+      res.status(500).json({
+        error: "tx_build_failed",
+        message: e instanceof Error ? e.message : "failed to build transaction"
+      });
+    }
+  })
+);
+
+// POST /api/orders/:id/settle — settle/pay phase
+const settleSchema = z.object({
+  txSig: z.string().regex(/^[1-9A-HJ-NP-Za-km-z]{32,88}$/, "invalid transaction signature"),
+});
+
+ordersRouter.post(
+  "/orders/:id/settle",
+  requireApiKey,
+  asyncHandler(async (req: AuthedRequest, res) => {
+    const parsed = settleSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: "validation_failed", issues: parsed.error.issues });
+      return;
+    }
+    const w = req.agent!.ownerWallet;
+    const { txSig } = parsed.data;
+    const id = String(req.params.id);
+
+    const { rows } = await query<{
+      status: string;
+      assigned_provider_wallet: string | null;
+      clearing_price: string | null;
+      hours: number | null;
+    }>(
+      `SELECT status, assigned_provider_wallet, clearing_price, hours 
+       FROM orders WHERE id = $1 AND wallet = $2`,
+      [id, w],
+    );
+
+    if (rows.length === 0) {
+      res.status(404).json({ error: "order not found" });
+      return;
+    }
+
+    const order = rows[0];
+    if (order.status !== "matched") {
+      res.status(400).json({ error: `cannot settle order in status '${order.status}'` });
+      return;
+    }
+
+    if (!order.assigned_provider_wallet || !order.clearing_price || !order.hours) {
+      res.status(400).json({ error: "order assignment details missing" });
+      return;
+    }
+
+    const price = parseFloat(order.clearing_price);
+    const totalAmount = price * order.hours;
+    const feeAmount = totalAmount * 0.005;
+    const combinedAmount = totalAmount + feeAmount;
+
+    const ok = await verifyUsdcTransfer(
+      txSig,
+      w,
+      env.obscuraServiceWallet,
+      combinedAmount,
+    );
+
+    if (!ok) {
+      res.status(400).json({
+        error: "payment_verification_failed",
+        message: `Unable to verify the lease payment of ${combinedAmount.toFixed(4)} USDC on-chain. Please ensure the transaction signature is correct and has successfully processed on Solana.`,
+      });
+      return;
+    }
+
+    await query(
+      `UPDATE orders 
+       SET status = 'settled', 
+           lease_started_at = now(), 
+           last_payout_at = now(),
+           payouts_completed = 0 
+       WHERE id = $1`,
+      [id]
+    );
+
+    res.json({ id, status: "settled", phase: "SETTLED" });
+  }),
+);
+
+interface ConnectionDetails {
+  host: string;
+  port: string;
+  username: string;
+  password?: string;
+  webCliUrl: string;
+}
+
+function getDynamicMockConnection(id: string, hostname: string): ConnectionDetails {
+  let portHash = 0;
+  for (let i = 0; i < id.length; i++) {
+    portHash = id.charCodeAt(i) + ((portHash << 5) - portHash);
+  }
+  const port = Math.abs(10000 + (portHash % 35000));
+
+  const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  let password = "";
+  for (let i = 0; i < 8; i++) {
+    const charIndex = Math.abs((portHash + i * 3) % chars.length);
+    password += chars[charIndex];
+  }
+
+  return {
+    host: hostname,
+    port: String(port),
+    username: "root",
+    password: password,
+    webCliUrl: "",
+  };
+}
+
+// GET /api/orders/:id — retrieve order status / connection credentials (X402 Gate)
+ordersRouter.get(
+  "/orders/:id",
+  requireApiKey,
+  asyncHandler(async (req: AuthedRequest, res) => {
+    const id = String(req.params.id);
+    const w = req.agent!.ownerWallet;
+
+    const { rows } = await query<{
+      id: string;
+      status: string;
+      assigned_provider_wallet: string | null;
+      clearing_price: string | null;
+      hours: number | null;
+      assigned_host: string | null;
+      assigned_port: string | null;
+      assigned_username: string | null;
+      assigned_password: string | null;
+      lease_started_at: Date | null;
+    }>(
+      `SELECT id, status, assigned_provider_wallet, clearing_price, hours,
+              assigned_host, assigned_port, assigned_username, assigned_password, lease_started_at
+       FROM orders WHERE id = $1 AND wallet = $2`,
+      [id, w]
+    );
+
+    if (rows.length === 0) {
+      res.status(404).json({ error: "order_not_found", message: "Order not found" });
+      return;
+    }
+
+    const order = rows[0];
+
+    // If order is matched but unpaid, trigger X402 Gate
+    if (order.status === "matched") {
+      if (!order.clearing_price || !order.hours) {
+        res.status(400).json({ error: "order_details_missing", message: "Order details missing" });
+        return;
+      }
+      const price = parseFloat(order.clearing_price);
+      const totalAmount = price * order.hours;
+      const feeAmount = totalAmount * 0.005;
+      const combinedAmount = totalAmount + feeAmount;
+
+      res.status(402).json({
+        error: "payment_required",
+        message: `Payment of ${combinedAmount.toFixed(4)} USDC required to access credentials.`,
+        amountUsdc: Number(combinedAmount.toFixed(6)),
+        escrowWallet: env.obscuraServiceWallet,
+        paymentUrl: `/api/orders/${id}/build-settle-tx`
+      });
+      return;
+    }
+
+    // If order is settled, return credentials (or block if expired)
+    if (order.status === "settled") {
+      // Expiration check
+      if (order.lease_started_at && order.hours) {
+        const start = new Date(order.lease_started_at).getTime();
+        const durationMs = order.hours * 60 * 60 * 1000;
+        const isExpired = Date.now() > start + durationMs;
+        if (isExpired) {
+          res.status(410).json({
+            id: order.id,
+            status: "expired",
+            error: "lease_expired",
+            message: "This server lease has expired."
+          });
+          return;
+        }
+      }
+
+      let connection: ConnectionDetails;
+      if (env.sshHost !== "localhost") {
+        connection = {
+          host: env.sshHost,
+          port: env.sshPort,
+          username: env.sshUsername,
+          password: env.sshPassword,
+          webCliUrl: "",
+        };
+      } else if (order.assigned_host) {
+        connection = {
+          host: order.assigned_host,
+          port: order.assigned_port ?? "22",
+          username: order.assigned_username ?? "root",
+          password: order.assigned_password ?? "",
+          webCliUrl: "",
+        };
+      } else {
+        connection = getDynamicMockConnection(id, req.hostname);
+      }
+
+      res.json({
+        id: order.id,
+        status: "settled",
+        connection
+      });
+      return;
+    }
+
+    // For other statuses (committed, revealed, cancelled), just return status
+    res.json({
+      id: order.id,
+      status: order.status
+    });
+  })
+);
+
