@@ -184,7 +184,6 @@ function ProvideGpuForm({ onRegistered }: { onRegistered: () => void }) {
   const [gpuType, setGpuType] = useState("H100 80GB");
   const [customGpu, setCustomGpu] = useState("");
   const [capacity, setCapacity] = useState("1");
-  const [stake, setStake] = useState("500");
   const [rate, setRate] = useState("1.80");
 
   // Connection details (required)
@@ -196,6 +195,9 @@ function ProvideGpuForm({ onRegistered }: { onRegistered: () => void }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+
+  const rateNum = parseFloat(rate);
+  const calculatedCollateral = isNaN(rateNum) ? 0 : rateNum * 17.78;
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -219,15 +221,13 @@ function ProvideGpuForm({ onRegistered }: { onRegistered: () => void }) {
       return;
     }
 
-    const stakeNum = parseFloat(stake);
-    if (isNaN(stakeNum) || stakeNum <= 0) {
-      setError("Collateral stake must be a positive number of USDC");
+    if (isNaN(rateNum) || rateNum <= 0) {
+      setError("Hourly rate must be positive");
       return;
     }
 
-    const rateNum = parseFloat(rate);
-    if (isNaN(rateNum) || rateNum <= 0) {
-      setError("Hourly rate must be positive");
+    if (calculatedCollateral <= 0) {
+      setError("Hourly rate must result in a positive collateral value");
       return;
     }
 
@@ -244,7 +244,7 @@ function ProvideGpuForm({ onRegistered }: { onRegistered: () => void }) {
         publicKey,
         sendTransaction,
         OBSCURA_COLLATERAL_WALLET,
-        stakeNum,
+        calculatedCollateral,
       );
 
       // 2. Call backend register API with the transaction signature
@@ -253,7 +253,7 @@ function ProvideGpuForm({ onRegistered }: { onRegistered: () => void }) {
         wallet,
         finalGpu,
         capNum,
-        stakeNum,
+        calculatedCollateral,
         host.trim(),
         port.trim(),
         username.trim(),
@@ -396,16 +396,12 @@ function ProvideGpuForm({ onRegistered }: { onRegistered: () => void }) {
               <div className="relative">
                 <input
                   id="stake"
-                  type="number"
-                  min="0.1"
-                  step="0.1"
-                  placeholder="500"
-                  value={stake}
-                  onChange={(e) => setStake(e.target.value)}
-                  className="flex h-10 w-full rounded-md border border-border bg-background/60 pl-3 pr-12 py-1.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                  required
+                  type="text"
+                  value={rateNum > 0 ? (rateNum * 17.78).toFixed(4) : ""}
+                  disabled
+                  className="flex h-10 w-full rounded-md border border-border/40 bg-background/20 pl-3 pr-12 py-1.5 text-xs text-muted-foreground opacity-70 cursor-not-allowed focus-visible:outline-none"
                 />
-                <img src="/usdc_logo.png" alt="USDC" className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 object-contain rounded-full" />
+                <img src="/usdc_logo.png" alt="USDC" className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 object-contain rounded-full opacity-60" />
               </div>
             </div>
           </div>
