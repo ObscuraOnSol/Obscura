@@ -16,8 +16,13 @@ import {
   Key,
   Settings,
   Lock,
+  ChevronDown,
+  X,
+  SlidersHorizontal,
+  Filter,
 } from "lucide-react";
 import { useConnection } from "@solana/wallet-adapter-react";
+import { HARDWARE_LIST } from "@/lib/hardware";
 
 import { FadeIn, StaggerContainer, StaggerItem } from "@/components/motion";
 import { marketApi, providersApi, type ProviderRow } from "@/lib/api";
@@ -100,7 +105,7 @@ export function MarketplaceLive() {
             <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
               type="text"
-              placeholder="Search GPU models (e.g., H100, RTX 4090)..."
+              placeholder="Search hardware models (e.g., H100, RTX 4090)..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full rounded-xl border border-border bg-card/40 py-2.5 pl-10 pr-4 text-sm text-foreground placeholder-muted-foreground/60 outline-none transition-colors focus:border-primary/50 focus:bg-card/60"
@@ -113,8 +118,16 @@ export function MarketplaceLive() {
             <SkeletonGrid />
           ) : rows.filter((p) => p.gpuType.toLowerCase().includes(searchQuery.toLowerCase())).length === 0 ? (
             <FadeIn>
-              <div className="flex min-h-[20vh] flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card/10 p-8 text-center text-sm text-muted-foreground">
-                No active GPU providers match your search.
+              <div className="flex min-h-[25vh] flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card/10 p-8 text-center text-sm text-muted-foreground gap-4">
+                <span>No active GPU providers match your search.</span>
+                <Button
+                  onClick={() => setActiveTab("provide")}
+                  variant="outline"
+                  className="flex items-center gap-2 border-primary/30 hover:border-primary/50 text-foreground transition-all duration-200"
+                >
+                  <PlusCircle className="h-4 w-4 text-primary" />
+                  Switch to Provide GPU Screen
+                </Button>
               </div>
             </FadeIn>
           ) : (
@@ -188,9 +201,16 @@ function ProvideGpuForm({ onRegistered }: { onRegistered: () => void }) {
   const { wallet, connect, sendTransaction, publicKey } = useWallet();
   const { connection } = useConnection();
 
-  const [gpuType, setGpuType] = useState("H100 80GB");
+  const [gpuType, setGpuType] = useState("NVIDIA H100 80GB");
   const [customGpu, setCustomGpu] = useState("");
   const [rate, setRate] = useState("1.80");
+
+  const [isModelModalOpen, setIsModelModalOpen] = useState(false);
+  const [tempCustomModel, setTempCustomModel] = useState("");
+  const [searchFilter, setSearchFilter] = useState("");
+  const [brandFilter, setBrandFilter] = useState("All");
+  const [typeFilter, setTypeFilter] = useState("All");
+  const [yearFilter, setYearFilter] = useState("All");
 
   // Connection details (required)
   const [host, setHost] = useState("");
@@ -208,6 +228,26 @@ function ProvideGpuForm({ onRegistered }: { onRegistered: () => void }) {
   const totalSellerPayable = calculatedCollateral + sellerProtocolFee;
   const finalGpu = gpuType === "Custom" ? customGpu.trim() : gpuType;
 
+  const filteredHardware = HARDWARE_LIST.filter((item) => {
+    if (searchFilter && !item.name.toLowerCase().includes(searchFilter.toLowerCase())) {
+      return false;
+    }
+    if (brandFilter !== "All" && item.brand.toLowerCase() !== brandFilter.toLowerCase()) {
+      return false;
+    }
+    if (typeFilter !== "All" && item.type.toLowerCase() !== typeFilter.toLowerCase()) {
+      return false;
+    }
+    if (yearFilter !== "All") {
+      if (yearFilter === "Older") {
+        if (item.releaseYear > 2020) return false;
+      } else {
+        if (item.releaseYear !== parseInt(yearFilter)) return false;
+      }
+    }
+    return true;
+  });
+
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!wallet || !publicKey || !sendTransaction) {
@@ -219,7 +259,7 @@ function ProvideGpuForm({ onRegistered }: { onRegistered: () => void }) {
     setSuccess(false);
 
     if (!finalGpu) {
-      setError("Please specify a GPU model");
+      setError("Please specify a hardware model");
       return;
     }
 
@@ -327,24 +367,25 @@ function ProvideGpuForm({ onRegistered }: { onRegistered: () => void }) {
           )}
 
           <div className="space-y-4">
-            {/* GPU Model & Custom */}
+            {/* Hardware Model & Custom */}
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <label htmlFor="gpuType" className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
-                  <Cpu className="h-3.5 w-3.5 text-primary" /> GPU Model
+                <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                  <Cpu className="h-3.5 w-3.5 text-primary" /> Hardware Model
                 </label>
-                <select
-                  id="gpuType"
-                  value={gpuType}
-                  onChange={(e) => setGpuType(e.target.value)}
-                  className="flex h-10 w-full rounded-md border border-border bg-background/60 px-3 py-1.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTempCustomModel(gpuType === "Custom" ? customGpu : "");
+                    setIsModelModalOpen(true);
+                  }}
+                  className="flex h-10 w-full items-center justify-between rounded-md border border-border bg-background/60 px-3 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring hover:bg-background/80 transition-colors"
                 >
-                  <option value="H100 80GB">H100 80GB</option>
-                  <option value="A100 80GB">A100 80GB</option>
-                  <option value="RTX 4090">RTX 4090</option>
-                  <option value="L40S">L40S</option>
-                  <option value="Custom">Custom...</option>
-                </select>
+                  <span className="truncate">
+                    {gpuType === "Custom" ? (customGpu ? `Custom: ${customGpu}` : "Custom Hardware...") : gpuType}
+                  </span>
+                  <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
+                </button>
               </div>
 
               {gpuType === "Custom" && (
@@ -568,6 +609,170 @@ function ProvideGpuForm({ onRegistered }: { onRegistered: () => void }) {
           </Button>
         </div>
       </div>
+
+      {isModelModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm">
+          <div className="relative w-full max-w-xl rounded-2xl border border-border/80 bg-[#0c0d10] p-6 shadow-2xl flex flex-col max-h-[85vh] text-foreground animate-in fade-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="flex items-center justify-between pb-4 border-b border-border/40">
+              <div>
+                <h3 className="font-semibold text-sm text-foreground flex items-center gap-2">
+                  <SlidersHorizontal className="h-4 w-4 text-primary" /> Select Hardware Model
+                </h3>
+                <p className="text-[10px] text-muted-foreground mt-0.5">
+                  Browse and filter our catalog of CPUs and GPUs.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsModelModalOpen(false)}
+                className="rounded-full p-1 text-muted-foreground hover:text-foreground hover:bg-border/20 transition-all"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Custom Input Block at the top */}
+            <div className="py-4 border-b border-border/20 space-y-2">
+              <label className="text-xs font-semibold text-primary block">
+                Can't find your hardware model here? Input custom
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="e.g. NVIDIA RTX 5090, Custom Server Cluster..."
+                  value={tempCustomModel}
+                  onChange={(e) => setTempCustomModel(e.target.value)}
+                  className="flex h-9 flex-1 rounded-md border border-border bg-background/60 px-3 py-1.5 text-xs text-foreground placeholder-muted-foreground/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                />
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="default"
+                  onClick={() => {
+                    if (tempCustomModel.trim()) {
+                      setGpuType("Custom");
+                      setCustomGpu(tempCustomModel.trim());
+                      setIsModelModalOpen(false);
+                    }
+                  }}
+                  disabled={!tempCustomModel.trim()}
+                >
+                  Apply Custom
+                </Button>
+              </div>
+            </div>
+
+            {/* Filter Section */}
+            <div className="py-4 border-b border-border/20 space-y-3">
+              {/* Search */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/60" />
+                <input
+                  type="text"
+                  placeholder="Search catalog (e.g. H100, EPYC)..."
+                  value={searchFilter}
+                  onChange={(e) => setSearchFilter(e.target.value)}
+                  className="w-full rounded-lg border border-border bg-background/40 py-1.5 pl-9 pr-3 text-xs text-foreground placeholder-muted-foreground/50 focus:outline-none focus:border-primary/50"
+                />
+              </div>
+
+              {/* Advanced Filter Row (Brand, Type, Year) */}
+              <div className="grid gap-3 grid-cols-3 text-xs">
+                {/* Brand */}
+                <div className="space-y-1">
+                  <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Brand</span>
+                  <select
+                    value={brandFilter}
+                    onChange={(e) => setBrandFilter(e.target.value)}
+                    className="w-full h-8 rounded-md border border-border bg-background/40 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+                  >
+                    <option value="All">All Brands</option>
+                    <option value="NVIDIA">NVIDIA</option>
+                    <option value="AMD">AMD</option>
+                    <option value="Intel">Intel</option>
+                    <option value="Apple">Apple</option>
+                    <option value="Dell">Dell</option>
+                    <option value="HP">HP</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+
+                {/* Type */}
+                <div className="space-y-1">
+                  <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Type</span>
+                  <select
+                    value={typeFilter}
+                    onChange={(e) => setTypeFilter(e.target.value)}
+                    className="w-full h-8 rounded-md border border-border bg-background/40 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+                  >
+                    <option value="All">All Types</option>
+                    <option value="gpu">GPU</option>
+                    <option value="cpu">CPU</option>
+                  </select>
+                </div>
+
+                {/* Release Year */}
+                <div className="space-y-1">
+                  <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Release Year</span>
+                  <select
+                    value={yearFilter}
+                    onChange={(e) => setYearFilter(e.target.value)}
+                    className="w-full h-8 rounded-md border border-border bg-background/40 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+                  >
+                    <option value="All">All Years</option>
+                    <option value="2024">2024</option>
+                    <option value="2023">2023</option>
+                    <option value="2022">2022</option>
+                    <option value="2021">2021</option>
+                    <option value="Older">2020 & Older</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* List */}
+            <div className="flex-1 overflow-y-auto py-4 space-y-2 max-h-[300px]">
+              {filteredHardware.length === 0 ? (
+                <div className="text-center py-8 text-xs text-muted-foreground">
+                  No hardware matching the selected filters found.
+                </div>
+              ) : (
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {filteredHardware.map((item) => (
+                    <button
+                      key={item.name}
+                      type="button"
+                      onClick={() => {
+                        setGpuType(item.name);
+                        setIsModelModalOpen(false);
+                      }}
+                      className={`flex flex-col text-left p-3 rounded-lg border text-xs transition-all ${
+                        gpuType === item.name
+                          ? "border-primary bg-primary/10 text-foreground"
+                          : "border-border/60 bg-card/30 hover:border-primary/40 hover:bg-card/50 text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      <span className="font-semibold text-foreground truncate">{item.name}</span>
+                      <div className="flex gap-1.5 mt-1.5 flex-wrap">
+                        <span className="px-1.5 py-0.5 rounded bg-background/60 text-[9px] uppercase tracking-wider border border-border/40 font-mono">
+                          {item.brand}
+                        </span>
+                        <span className="px-1.5 py-0.5 rounded bg-background/60 text-[9px] uppercase tracking-wider border border-border/40 font-mono">
+                          {item.type}
+                        </span>
+                        <span className="px-1.5 py-0.5 rounded bg-background/60 text-[9px] uppercase tracking-wider border border-border/40 font-mono">
+                          {item.releaseYear}
+                        </span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </FadeIn>
   );
 }

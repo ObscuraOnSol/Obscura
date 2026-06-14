@@ -523,7 +523,7 @@ export function OrderFlow() {
                 {/* Status and GPU Type */}
                 <div className="grid grid-cols-2 gap-4 rounded-xl border border-border/40 bg-background/40 p-3.5">
                   <div>
-                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground">GPU Model</span>
+                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Hardware Model</span>
                     <div className="mt-1 font-semibold text-foreground">{modalOrder.gpuType}</div>
                   </div>
                   <div>
