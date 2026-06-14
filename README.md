@@ -32,6 +32,51 @@ Obscura keeps **two privacy planes** separate by design:
   (clean-provenance proof on exit), **not** unscreened wallet layering. This is
   what keeps Obscura a market-microstructure tool, not an obfuscation service.
 
+### Architecture Flow
+
+```mermaid
+flowchart TD
+    subgraph Clients ["Clients & Agents"]
+        A["Next.js Web UI"]
+        B["AI Agents via API"]
+    end
+
+    subgraph Backend ["Obscura Backend Services"]
+        C["API Gateway / Express Router"]
+        D[(PostgreSQL DB)]
+        E["Matching Engine Worker"]
+        F["Escrow & Payout Manager"]
+    end
+
+    subgraph Solana ["Solana Blockchain"]
+        G["Obscura Anchor Program"]
+        H["USDC Escrow Vault"]
+    end
+
+    %% Client requests
+    A -->|1. Commit Hash / Auth| C
+    B -->|1. Commit Hash / API Key| C
+    C -->|Store Commit| D
+
+    %% Reveal phase
+    A -->|2. Reveal Price & Qty| C
+    B -->|2. Reveal Price & Qty| C
+    C -->|Update status to Revealed| D
+
+    %% Matching Engine
+    E -->|3. Read Revealed Bids| D
+    E -->|4. Clear Batch & Set Price| E
+    E -->|5. Write Settlements & Oracle Prices| D
+
+    %% Settlement & Escrow
+    C -->|6. Get matched status & 402 Gate| A
+    C -->|7. Request settlement tx| B
+    F -->|8. Release USDC payout| G
+    G -->|9. Transfer USDC| H
+    F -->|10. Expose SSH Credentials| D
+    A & B -->|11. Retrieve SSH access| C
+```
+
 ## Core features
 
 | Feature | What it does |
