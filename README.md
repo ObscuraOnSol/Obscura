@@ -2,7 +2,7 @@
   <img src="logo.png" alt="Obscura" width="120" />
   <h1>Obscura</h1>
   <p><strong>Compute in the dark.</strong></p>
-  <p>A dark pool for AI/GPU compute on Solana — encrypted order books, commit-reveal submission, ZK-matched batch auctions, USDC settlement.</p>
+  <p>A dark pool for AI/GPU compute on Solana: encrypted order books, commit-reveal submission, ZK-matched batch auctions, USDC settlement.</p>
 </div>
 
 ![backend CI](https://github.com/ObscuraOnSol/Obscura/actions/workflows/backend.yml/badge.svg)
@@ -18,7 +18,7 @@
 ## What it does
 
 AI agents need GPU compute to operate, but every compute order today is placed on
-public markets — size, price, and timing are all visible, inviting front-running,
+public markets: size, price, and timing are all visible, inviting front-running,
 price manipulation, and information leakage. **Obscura applies dark-pool
 microstructure to compute.** Orders are submitted privately (commit-reveal),
 matched in a scheduled ~45s batch auction under zero-knowledge proof, and settled
@@ -26,9 +26,9 @@ in USDC. No one sees what you buy, what you pay, or when.
 
 Obscura keeps **two privacy planes** separate by design:
 
-- **Order privacy** — hiding order size/price/timing. The legitimate dark-pool
+- **Order privacy** (hiding order size/price/timing): the legitimate dark-pool
   mechanic; unconstrained.
-- **Fund privacy** — shielding settlement via a screened *association-set* model
+- **Fund privacy**: shielding settlement via a screened *association-set* model
   (clean-provenance proof on exit), **not** unscreened wallet layering. This is
   what keeps Obscura a market-microstructure tool, not an obfuscation service.
 
@@ -81,7 +81,7 @@ flowchart TD
 
 | Feature | What it does |
 |---|---|
-| Commit–reveal orders | Orders are hashed before submission — no order details on the public mempool. |
+| Commit-reveal orders | Orders are hashed before submission, meaning no order details reach the public mempool. |
 | ZK-matched batch auctions | A ~45s batch auction clears a single price; order details never exposed during matching. |
 | Screened settlement | Every external exit carries a clean-provenance association-set proof. |
 | Agent-native API | Token-gated programmatic access via SAS passports + `X-API-Key`. No KYC. |
@@ -97,7 +97,7 @@ flowchart TD
 | **Matched** | ~45s ZK batch auction sets a single clearing price. |
 | **Settled** | `settle_batch()` releases USDC from escrow on fill; receipt issued. |
 
-The UI always makes the current phase explicit, so users know what is — and isn't — yet public.
+The UI always makes the current phase explicit, so users know what is, and isn't, yet public.
 
 ## API (public + agent)
 
@@ -113,7 +113,7 @@ The UI always makes the current phase explicit, so users know what is — and is
 | GET | `/v1/agent/docs` | Interactive Swagger API documentation. |
 | GET | `/v1/agent/docs.json` | OpenAPI JSON specification. |
 | POST | `/api/auth/nonce` · `/api/auth/verify` | Sign-In-With-Solana. |
-| POST/GET | `/api/orders` *(X-API-Key)* | Agent order API — submit / list / cancel. |
+| POST/GET | `/api/orders` *(X-API-Key)* | Agent order API: submit / list / cancel. |
 | GET | `/api/orders/:id` *(X-API-Key)* | Retrieve credentials (gated by X402 Payment Required if matched but unpaid). |
 | POST | `/api/orders/:id/reveal` *(X-API-Key)* | Reveal price, quantity, and salt to enter auction. |
 | POST | `/api/orders/:id/build-settle-tx` *(X-API-Key)* | Build the on-chain settlement transaction. |
@@ -123,14 +123,14 @@ The UI always makes the current phase explicit, so users know what is — and is
 
 ```
 obscura/
-  app/                  Next.js frontend (root) — landing, dashboard, orders, marketplace, agent…
+  app/                  Next.js frontend (root): landing, dashboard, orders, marketplace, agent…
   components/           UI + brand components (shadcn-style)
   lib/                  frontend utilities
-  backend/              Bun + Express + PostgreSQL (no ORM) — read/stat APIs, agent API, auth
+  backend/              Bun + Express + PostgreSQL (no ORM): read/stat APIs, agent API, auth
     src/routes/         health, market, settlements, providers, orders, auth
     src/db/             pg pool + hand-rolled migration runner
     db/migrations/      versioned SQL
-  contract/             Solana Anchor programs — obscura_pool (commit-reveal); escrow interface-only
+  contract/             Solana Anchor programs: obscura_pool (commit-reveal); escrow interface-only
   gpu-server/           Mock GPU compute node running SSH and web terminal for local dev
   .github/workflows/    backend + frontend CI
 ```
@@ -157,7 +157,7 @@ cp .env.example .env        # DATABASE_URL etc.
 bun run dev                 # http://localhost:3001  (runs migrations on boot)
 bun test
 
-# 3. Contract (optional — not on the MVP critical path)
+# 3. Contract (optional, not on the MVP critical path)
 cd contract
 anchor build && anchor test
 ```
