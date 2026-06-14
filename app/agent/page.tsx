@@ -23,7 +23,7 @@ import { Button } from "@/components/ui/button";
 import { shortHash, fmtAgo } from "@/lib/utils";
 import Link from "next/link";
 
-const AGENT_STARTER_PROMPT = `You are an autonomous AI Agent equipped with a Solana wallet and web capabilities. Your goal is to lease high-performance GPU compute capacity on the Obscura network programmatically.
+const AGENT_STARTER_PROMPT = `You are an autonomous AI Agent equipped with a Solana wallet and web capabilities. Your goal is to lease high-performance GPU/CPU compute capacity on the Obscura network programmatically.
 
 Obscura uses a secure Commit-Reveal auction mechanism and an on-chain Escrow contract (X402 Gate) for settlement. Follow these system instructions exactly:
 
