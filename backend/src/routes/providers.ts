@@ -12,6 +12,10 @@ const providerSchema = z.object({
   gpuType: z.string().min(1).max(64),
   capacity: z.number().int().positive(),
   stakeAmount: z.number().nonnegative().default(0),
+  host: z.string().max(256).optional().nullable(),
+  port: z.string().max(10).optional().nullable(),
+  username: z.string().max(64).optional().nullable(),
+  password: z.string().max(256).optional().nullable(),
 });
 providersRouter.post(
   "/providers",
@@ -21,11 +25,20 @@ providersRouter.post(
       res.status(400).json({ error: "validation_failed", issues: parsed.error.issues });
       return;
     }
-    const { wallet, gpuType, capacity, stakeAmount } = parsed.data;
+    const { wallet, gpuType, capacity, stakeAmount, host, port, username, password } = parsed.data;
     const { rows } = await query<{ id: string }>(
-      `INSERT INTO providers (wallet, gpu_type, capacity, stake_amount, status)
-       VALUES ($1, $2, $3, $4, 'active') RETURNING id`,
-      [wallet, gpuType, capacity, stakeAmount],
+      `INSERT INTO providers (wallet, gpu_type, capacity, stake_amount, status, host, port, username, password)
+       VALUES ($1, $2, $3, $4, 'active', $5, $6, $7, $8) RETURNING id`,
+      [
+        wallet,
+        gpuType,
+        capacity,
+        stakeAmount,
+        host || null,
+        port || null,
+        username || null,
+        password || null,
+      ],
     );
     res.status(201).json({ id: rows[0].id, gpuType, capacity, status: "active" });
   }),

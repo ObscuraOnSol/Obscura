@@ -109,10 +109,55 @@ export async function runBatch(): Promise<BatchResult> {
         `INSERT INTO market_prices (ts, gpu_type, clearing_price) VALUES (now(), $1, $2)`,
         [gpu, clearingPrice],
       );
-      await client.query(
-        `UPDATE orders SET status = 'settled' WHERE id = ANY($1::uuid[])`,
-        [filled],
-      );
+      for (const orderId of filled) {
+        // Find an active provider for this GPU type that has capacity > 0
+        const { rows: matchedProviders } = await client.query<{
+          id: string;
+          host: string | null;
+          port: string | null;
+          username: string | null;
+          password: string | null;
+        }>(
+          `SELECT id, host, port, username, password 
+           FROM providers 
+           WHERE gpu_type = $1 AND status = 'active' AND capacity > 0
+           ORDER BY updated_at ASC
+           LIMIT 1`,
+          [gpu],
+        );
+
+        let host: string | null = null;
+        let port: string | null = null;
+        let username: string | null = null;
+        let password: string | null = null;
+
+        if (matchedProviders.length > 0) {
+          const prov = matchedProviders[0];
+          host = prov.host;
+          port = prov.port;
+          username = prov.username;
+          password = prov.password;
+
+          const orderIntent = list.find((it) => it.order_id === orderId);
+          const deductQty = orderIntent ? orderIntent.qty : 1;
+          await client.query(
+            `UPDATE providers SET capacity = GREATEST(0, capacity - $1) WHERE id = $2`,
+            [deductQty, prov.id],
+          );
+        }
+
+        await client.query(
+          `UPDATE orders 
+           SET status = 'settled', 
+               assigned_host = $1, 
+               assigned_port = $2, 
+               assigned_username = $3, 
+               assigned_password = $4
+           WHERE id = $5`,
+          [host, port, username, password, orderId],
+        );
+      }
+
       await client.query(`DELETE FROM order_intents WHERE order_id = ANY($1::uuid[])`, [
         filled,
       ]);

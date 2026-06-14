@@ -20,15 +20,6 @@ CROSS JOIN (VALUES
 
 -- 2. GPU providers / node operators.
 DELETE FROM providers;
-INSERT INTO providers (wallet, gpu_type, capacity, stake_amount, status)
-SELECT
-  'PROVIDER_' || x.gpu || '_' || n,
-  x.gpu,
-  (random() * 60 + 10)::int,
-  round((random() * 5000 + 500)::numeric, 6),
-  'active'
-FROM generate_series(1, 6) AS n
-CROSS JOIN (VALUES ('H100 80GB'), ('A100 80GB'), ('RTX 4090'), ('L40S')) AS x(gpu);
 
 -- 3. Recent batch settlements (one batch per GPU every ~45s, last 12 batches).
 DELETE FROM settlements;

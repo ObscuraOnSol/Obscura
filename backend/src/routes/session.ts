@@ -188,60 +188,7 @@ interface ConnectionDetails {
   webCliUrl: string;
 }
 
-function getDockerConnection(id: string): ConnectionDetails | null {
-  try {
-    // Check if docker is installed and running
-    execSync("docker --version", { stdio: "ignore" });
-  } catch (e) {
-    return null; // Docker not available
-  }
-
-  const containerName = `obscura-node-${id.slice(0, 8)}`;
-
-  try {
-    // Check if container is running
-    const isRunning = execSync(`docker inspect -f '{{.State.Running}}' ${containerName}`, { stdio: "pipe" })
-      .toString()
-      .trim();
-
-    if (isRunning !== "true") {
-      // If it exists but is stopped, start it
-      execSync(`docker start ${containerName}`, { stdio: "ignore" });
-    }
-  } catch (e) {
-    // Container does not exist, let's create and start it
-    try {
-      // Run the container exposing port 22 and 7681 on random host ports
-      execSync(`docker run -d --name ${containerName} -p 22 -p 7681 obscura-gpu-server`, { stdio: "ignore" });
-    } catch (err) {
-      console.error("Failed to run docker container, fallback to env config", err);
-      return null;
-    }
-  }
-
-  try {
-    // Get host port mappings
-    const sshPortOutput = execSync(`docker port ${containerName} 22`, { stdio: "pipe" }).toString().trim();
-    const webPortOutput = execSync(`docker port ${containerName} 7681`, { stdio: "pipe" }).toString().trim();
-
-    // Parse port (matches e.g. "0.0.0.0:32768" or "[::]:32768" or "32768")
-    const sshPort = sshPortOutput.split(":").pop() || "2222";
-    const webPort = webPortOutput.split(":").pop() || "7681";
-
-    return {
-      host: "localhost",
-      port: sshPort,
-      username: "root",
-      password: "obscura",
-      webCliUrl: `http://localhost:${webPort}`,
-    };
-  } catch (e) {
-    console.error("Failed to parse docker ports", e);
-    return null;
-  }
-}
-
-function getDynamicMockConnection(id: string): ConnectionDetails {
+function getDynamicMockConnection(id: string, hostname: string): ConnectionDetails {
   const shortId = id.slice(0, 6);
   // Generate a realistic random port between 10000 and 45000 based on the order ID
   let portHash = 0;
@@ -259,11 +206,11 @@ function getDynamicMockConnection(id: string): ConnectionDetails {
   }
 
   return {
-    host: `node-${shortId}.obscura.network`,
+    host: hostname,
     port: String(port),
     username: "root",
     password: password,
-    webCliUrl: `https://terminal.obscura.network/?node=node-${shortId}`,
+    webCliUrl: "",
   };
 }
 
@@ -272,19 +219,27 @@ sessionRouter.get(
   "/session/orders/:id/connection",
   asyncHandler(async (req, res) => {
     const id = String(req.params.id);
-    const { rows } = await query(
-      `SELECT id FROM orders WHERE id = $1`,
+    const { rows } = await query<{
+      id: string;
+      status: string;
+      assigned_host: string | null;
+      assigned_port: string | null;
+      assigned_username: string | null;
+      assigned_password: string | null;
+    }>(
+      `SELECT id, status, assigned_host, assigned_port, assigned_username, assigned_password 
+       FROM orders WHERE id = $1`,
       [id]
     );
+
     if (rows.length === 0) {
       res.status(404).json({ error: "order not found" });
       return;
     }
 
-    // Try to get dynamic Docker connection if running locally with docker
-    const dockerConn = getDockerConnection(id);
-    if (dockerConn) {
-      res.json(dockerConn);
+    const order = rows[0];
+    if (order.status !== "settled") {
+      res.status(400).json({ error: "order is not settled yet" });
       return;
     }
 
@@ -295,13 +250,24 @@ sessionRouter.get(
         port: env.sshPort,
         username: env.sshUsername,
         password: env.sshPassword,
-        webCliUrl: env.webCliUrl,
+        webCliUrl: "",
       });
       return;
     }
 
-    // Otherwise, generate a consistent, unique mock credentials for this order to look fully authentic
-    const mockConn = getDynamicMockConnection(id);
+    if (order.assigned_host) {
+      res.json({
+        host: order.assigned_host,
+        port: order.assigned_port ?? "22",
+        username: order.assigned_username ?? "root",
+        password: order.assigned_password ?? "",
+        webCliUrl: "",
+      });
+      return;
+    }
+
+    // Otherwise, generate a consistent, unique mock credentials for this order pointing to our backend host
+    const mockConn = getDynamicMockConnection(id, req.hostname);
     res.json(mockConn);
   }),
 );

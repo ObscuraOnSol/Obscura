@@ -1,5 +1,25 @@
-export const API_BASE =
-  process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ?? "http://localhost:3001";
+export const API_BASE = (() => {
+  let url = process.env.NEXT_PUBLIC_API_URL;
+  if (!url) return "http://localhost:3001";
+
+  // Clean trailing slashes and whitespace
+  url = url.trim().replace(/\/+$/, "");
+
+  // Fix typos like https//domain.com to https://domain.com
+  url = url.replace(/^(https?)\/\/([^/])/i, "$1://$2");
+
+  // Fix double protocols like https://https// or https://https://
+  url = url.replace(/^(https?:\/\/)+https?:\/\//i, "$1");
+  url = url.replace(/^https?:\/\/https?\/\//i, "https://");
+  url = url.replace(/^http:\/\/http\/\//i, "http://");
+  url = url.replace(/^https?:\/\/https?:\/\//i, "https://");
+
+  // Clean duplicate protocol characters
+  url = url.replace(/^(https?:\/\/)+/, (match) => match.includes("https") ? "https://" : "http://");
+
+  return url;
+})();
+
 
 export interface SessionOrder {
   id: string;
@@ -159,9 +179,22 @@ export const providersApi = {
     gpuType: string,
     capacity: number,
     stakeAmount: number,
+    host?: string,
+    port?: string,
+    username?: string,
+    password?: string,
   ) =>
     call<{ id: string; status: string }>("/api/providers", {
       method: "POST",
-      body: JSON.stringify({ wallet, gpuType, capacity, stakeAmount }),
+      body: JSON.stringify({
+        wallet,
+        gpuType,
+        capacity,
+        stakeAmount,
+        host,
+        port,
+        username,
+        password,
+      }),
     }),
 };
