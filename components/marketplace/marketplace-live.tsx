@@ -483,7 +483,7 @@ function ProvideGpuForm({ onRegistered }: { onRegistered: () => void }) {
 
           <div className="space-y-6">
             <div>
-              <div className="text-[10px] uppercase tracking-[0.2em] text-primary font-bold">Node Listing Preview</div>
+              <div className="text-[10px] uppercase tracking-[0.2em] text-primary font-bold">Preview</div>
               <h4 className="text-sm font-semibold text-foreground mt-1 flex items-center gap-2">
                 <Server className="h-4 w-4 text-primary" /> {finalGpu || "Unknown GPU"}
               </h4>

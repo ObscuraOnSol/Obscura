@@ -32,7 +32,7 @@ import { PhaseBadge } from "@/components/ui/badge";
 import { FadeIn, StaggerContainer, StaggerItem } from "@/components/motion";
 import { useWallet } from "@/lib/wallet";
 import { useSession } from "@/lib/session";
-import { ordersApi, marketApi, type SessionOrder } from "@/lib/api";
+import { ordersApi, marketApi, type SessionOrder, type ProviderRow } from "@/lib/api";
 import { computeCommitHash, randomSecretHex, usdToMicro } from "@/lib/commit";
 import { cn, fmtUsdHr, shortHash } from "@/lib/utils";
 import { performUsdcTransfer } from "@/lib/solana";
@@ -105,26 +105,24 @@ export function OrderFlow() {
   const [gpuType, setGpuType] = useState(GPU_TYPES[0]);
   const [price, setPrice] = useState("1.8000");
   const [qty, setQty] = useState("1");
-
-  const baseRate = useMemo(() => {
-    switch (gpuType) {
-      case "H100 80GB": return 2.50;
-      case "A100 80GB": return 1.80;
-      case "RTX 4090": return 0.80;
-      case "L40S": return 1.20;
-      default: return 1.50;
-    }
-  }, [gpuType]);
+  const [activeProviders, setActiveProviders] = useState<ProviderRow[]>([]);
 
   const computedPrice = useMemo(() => {
-    const hours = parseInt(qty) || 1;
-    let factor = 1.0;
-    if (hours >= 24) factor = 0.80; // 20% discount for 24h+
-    else if (hours >= 12) factor = 0.85; // 15% discount for 12h+
-    else if (hours >= 6) factor = 0.90; // 10% discount for 6h+
-    else if (hours >= 3) factor = 0.95; // 5% discount for 3h+
-    return (baseRate * factor).toFixed(4);
-  }, [baseRate, qty]);
+    const matches = activeProviders.filter((p) => p.gpuType === gpuType);
+    if (matches.length > 0) {
+      // Get the rate of the cheapest active provider for this GPU type
+      const minRate = Math.min(...matches.map((p) => p.rateMicro / 1_000_000));
+      return minRate.toFixed(4);
+    }
+    // Fallback defaults ONLY when marketplace has no active providers for this GPU
+    switch (gpuType) {
+      case "H100 80GB": return "2.5000";
+      case "A100 80GB": return "1.8000";
+      case "RTX 4090": return "0.8000";
+      case "L40S": return "1.2000";
+      default: return "1.5000";
+    }
+  }, [gpuType, activeProviders]);
 
   useEffect(() => {
     setPrice(computedPrice);
@@ -162,12 +160,10 @@ export function OrderFlow() {
   useEffect(() => {
     marketApi.providers()
       .then(({ providers }) => {
+        const active = providers.filter((p) => p.status === "active");
+        setActiveProviders(active);
         const activeGpus = Array.from(
-          new Set(
-            providers
-              .filter((p) => p.status === "active")
-              .map((p) => p.gpuType)
-          )
+          new Set(active.map((p) => p.gpuType))
         );
         if (activeGpus.length > 0) {
           setGpuTypes(activeGpus);
