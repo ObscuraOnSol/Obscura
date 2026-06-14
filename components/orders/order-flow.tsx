@@ -17,6 +17,7 @@ import {
   ChevronDown,
   LogOut,
   Terminal,
+  ArrowLeft,
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 
@@ -102,6 +103,7 @@ export function OrderFlow() {
   const [error, setError] = useState<string | null>(null);
   const [modalOrder, setModalOrder] = useState<SessionOrder | null>(null);
   const [connectOrder, setConnectOrder] = useState<SessionOrder | null>(null);
+  const [showWebCli, setShowWebCli] = useState(false);
 
   const handleOpenConnect = (o: SessionOrder) => {
     setConnectOrder(o);
@@ -481,15 +483,16 @@ export function OrderFlow() {
               <div className="flex items-start justify-between border-b border-border/60 pb-4">
                 <div>
                   <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
-                    <Terminal className="h-5 w-5 text-primary" /> Live GPU Instance Console
+                    <Terminal className="h-5 w-5 text-primary" /> Compute Node Connection
                   </h3>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Exposed web terminal for the allocated {connectOrder.gpuType} container.
+                    SSH endpoint for the allocated {connectOrder.gpuType} instance.
                   </p>
                 </div>
                 <button
                   onClick={() => {
                     setConnectOrder(null);
+                    setShowWebCli(false);
                   }}
                   className="rounded-lg p-1 text-muted-foreground hover:bg-white/5 hover:text-foreground transition-colors"
                 >
@@ -499,54 +502,112 @@ export function OrderFlow() {
 
               {/* Modal Content */}
               <div className="mt-6 space-y-4">
-                {/* Simulated Instance Info */}
-                <div className="grid grid-cols-2 gap-4 rounded-xl border border-border/50 bg-background/30 p-3.5 text-xs">
-                  <div>
-                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground block mb-0.5">Instance Status</span>
-                    <span className="text-primary font-medium flex items-center gap-1.5">
-                      <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
-                      Connected (Local Docker)
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground block mb-0.5">Console Endpoint</span>
-                    <a 
-                      href="http://localhost:7681" 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="font-mono text-muted-foreground hover:text-primary transition-colors underline"
-                    >
-                      http://localhost:7681
-                    </a>
-                  </div>
-                </div>
+                {!showWebCli ? (
+                  <>
+                    {/* Connection Details box */}
+                    <div className="space-y-3.5 text-sm">
+                      {/* Host Field */}
+                      <div className="flex flex-col gap-1.5 border-b border-border/40 pb-3.5">
+                        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Host Address</span>
+                        <div className="flex items-center justify-between gap-2 rounded-lg border border-border bg-background/50 px-3 py-2 font-mono text-xs text-foreground">
+                          <span className="truncate">localhost</span>
+                          <CopyText text="localhost" />
+                        </div>
+                      </div>
 
-                {/* Live Terminal Window Wrapper */}
-                <div className="overflow-hidden rounded-xl border border-border/80 bg-zinc-950 shadow-2xl">
-                  {/* Terminal Window Chrome */}
-                  <div className="flex items-center justify-between bg-zinc-900 px-4 py-2 border-b border-border/40 select-none">
-                    <div className="flex items-center gap-1.5">
-                      <div className="h-2.5 w-2.5 rounded-full bg-red-500/80" />
-                      <div className="h-2.5 w-2.5 rounded-full bg-yellow-500/80" />
-                      <div className="h-2.5 w-2.5 rounded-full bg-green-500/80" />
+                      {/* Port Field */}
+                      <div className="flex flex-col gap-1.5 border-b border-border/40 pb-3.5">
+                        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Port</span>
+                        <div className="flex items-center justify-between gap-2 rounded-lg border border-border bg-background/50 px-3 py-2 font-mono text-xs text-foreground">
+                          <span className="truncate">2222</span>
+                          <CopyText text="2222" />
+                        </div>
+                      </div>
+
+                      {/* User Field */}
+                      <div className="flex flex-col gap-1.5 border-b border-border/40 pb-3.5">
+                        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Username</span>
+                        <div className="flex items-center justify-between gap-2 rounded-lg border border-border bg-background/50 px-3 py-2 font-mono text-xs text-foreground">
+                          <span className="truncate">root</span>
+                          <CopyText text="root" />
+                        </div>
+                      </div>
+
+                      {/* Password Field */}
+                      <div className="flex flex-col gap-1.5 border-b border-border/40 pb-3.5">
+                        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Credentials / Password</span>
+                        <div className="flex items-center justify-between gap-2 rounded-lg border border-border bg-background/50 px-3 py-2 font-mono text-xs text-foreground">
+                          <span className="truncate">obscura</span>
+                          <CopyText text="obscura" />
+                        </div>
+                      </div>
+
+                      {/* Command Field */}
+                      <div className="flex flex-col gap-1.5 border-b border-border/40 pb-3.5">
+                        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">SSH Command</span>
+                        <div className="flex items-center justify-between gap-2 rounded-lg border border-border bg-background/50 px-3 py-2 font-mono text-xs text-primary">
+                          <span className="truncate">ssh root@localhost -p 2222</span>
+                          <CopyText text="ssh root@localhost -p 2222" />
+                        </div>
+                      </div>
                     </div>
-                    <span className="text-[10px] font-mono text-muted-foreground/80">root@obscura-gpu-node:~</span>
-                    <div className="w-10" />
-                  </div>
-                  {/* Embedded Iframe */}
-                  <iframe
-                    src="http://localhost:7681"
-                    className="w-full h-[320px] bg-black border-none"
-                    title="Obscura Live GPU Console"
-                  />
-                </div>
 
-                {/* Instructions */}
-                <div className="rounded-xl border border-dashed border-border/60 bg-muted/20 p-4">
-                  <p className="text-xs text-muted-foreground leading-normal font-sans">
-                    This interactive shell is running inside the simulated GPU Docker instance. You can run standard shell commands (e.g. <code className="bg-white/5 px-1 py-0.5 rounded font-mono text-[10px]">uname -a</code> or inspect environment configurations) directly above.
-                  </p>
-                </div>
+                    {/* Instructions */}
+                    <div className="rounded-xl border border-dashed border-border/60 bg-muted/20 p-4 space-y-2.5">
+                      <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                        <Info className="h-4 w-4 text-primary shrink-0" />
+                        Instructions
+                      </div>
+                      <p className="text-xs text-muted-foreground leading-normal font-sans">
+                        Open your terminal and run the copied SSH command. Use the provided password when prompted. Once connected, your environment is ready with pre-configured NVIDIA drivers and dependencies.
+                      </p>
+                      <p className="text-xs text-primary font-medium leading-normal font-sans">
+                        ⚠️ Safety Recommendation: Since this connection is provisional, you should change the password immediately upon entering the server using the <code className="bg-white/5 px-1 py-0.5 rounded font-mono text-[10px]">passwd</code> command.
+                      </p>
+                    </div>
+
+                    {/* Use Web CLI option button */}
+                    <Button 
+                      className="w-full mt-4 flex items-center justify-center gap-2"
+                      variant="outline"
+                      onClick={() => setShowWebCli(true)}
+                    >
+                      <Terminal className="h-4 w-4 text-primary" />
+                      Use Web CLI
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    {/* Live Terminal Window Wrapper */}
+                    <div className="overflow-hidden rounded-xl border border-border/80 bg-zinc-950 shadow-2xl">
+                      {/* Terminal Window Chrome */}
+                      <div className="flex items-center justify-between bg-zinc-900 px-4 py-2 border-b border-border/40 select-none">
+                        <div className="flex items-center gap-1.5">
+                          <div className="h-2.5 w-2.5 rounded-full bg-red-500/80" />
+                          <div className="h-2.5 w-2.5 rounded-full bg-yellow-500/80" />
+                          <div className="h-2.5 w-2.5 rounded-full bg-green-500/80" />
+                        </div>
+                        <span className="text-[10px] font-mono text-muted-foreground/80">root@obscura-gpu-node:~</span>
+                        <div className="w-10" />
+                      </div>
+                      {/* Embedded Iframe */}
+                      <iframe
+                        src="http://localhost:7681"
+                        className="w-full h-[320px] bg-black border-none"
+                        title="Live Console"
+                      />
+                    </div>
+
+                    <Button 
+                      className="w-full mt-4 flex items-center justify-center gap-2"
+                      variant="outline"
+                      onClick={() => setShowWebCli(false)}
+                    >
+                      <ArrowLeft className="h-4 w-4" />
+                      Show SSH Details
+                    </Button>
+                  </>
+                )}
               </div>
 
               {/* Modal Footer */}
@@ -556,6 +617,7 @@ export function OrderFlow() {
                   variant="outline"
                   onClick={() => {
                     setConnectOrder(null);
+                    setShowWebCli(false);
                   }}
                 >
                   Close

@@ -20,12 +20,12 @@ services:
       retries: 5
 
   gpu-server:
-    image: tsl0922/ttyd:latest
+    build: ./gpu-server
     container_name: obscura-gpu-server
     restart: unless-stopped
     ports:
       - "7681:7681"
-    command: sh
+      - "2222:22"
 
 volumes:
   obscura_pgdata:
