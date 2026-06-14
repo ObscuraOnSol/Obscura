@@ -19,27 +19,49 @@ export async function verifyUsdcTransfer(
   const usdcMint = isMainnet ? env.usdcMint : env.usdcMintDevnet;
 
   try {
-    const response = await fetch(rpcUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        jsonrpc: "2.0",
-        id: 1,
-        method: "getTransaction",
-        params: [
-          txSig,
-          { encoding: "jsonParsed", maxSupportedTransactionVersion: 0 }
-        ]
-      })
-    });
-    
-    const json = (await response.json()) as any;
-    if (json.error || !json.result) {
-      console.error("[solana-verify] RPC returned error or no result for transaction:", txSig, json.error);
-      return false;
+    let retries = 6;
+    let result = null;
+
+  while (retries >= 0) {
+    try {
+      const response = await fetch(rpcUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "getTransaction",
+          params: [
+            txSig,
+            { encoding: "jsonParsed", maxSupportedTransactionVersion: 0 }
+          ]
+        })
+      });
+      
+      const json = (await response.json()) as any;
+      if (json.result) {
+        result = json.result;
+        break;
+      }
+      
+      if (json.error) {
+        console.warn(`[solana-verify] RPC returned error (attempt ${6 - retries + 1}):`, json.error);
+      } else {
+        console.warn(`[solana-verify] Transaction not indexed yet (attempt ${6 - retries + 1}):`, txSig);
+      }
+    } catch (err) {
+      console.warn(`[solana-verify] Fetch error (attempt ${6 - retries + 1}):`, err);
     }
     
-    const result = json.result;
+    if (retries === 0) break;
+    retries--;
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+  }
+
+  if (!result) {
+    console.error("[solana-verify] RPC failed to retrieve transaction after retries:", txSig);
+    return false;
+  }
     
     // Ensure transaction was successful
     if (result.meta && result.meta.err) {
@@ -107,27 +129,49 @@ export async function verifyUsdcSplitTransfer(
   const usdcMint = isMainnet ? env.usdcMint : env.usdcMintDevnet;
 
   try {
-    const response = await fetch(rpcUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        jsonrpc: "2.0",
-        id: 1,
-        method: "getTransaction",
-        params: [
-          txSig,
-          { encoding: "jsonParsed", maxSupportedTransactionVersion: 0 }
-        ]
-      })
-    });
-    
-    const json = (await response.json()) as any;
-    if (json.error || !json.result) {
-      console.error("[solana-verify] RPC returned error or no result for transaction:", txSig, json.error);
-      return false;
+    let retries = 6;
+    let result = null;
+
+  while (retries >= 0) {
+    try {
+      const response = await fetch(rpcUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "getTransaction",
+          params: [
+            txSig,
+            { encoding: "jsonParsed", maxSupportedTransactionVersion: 0 }
+          ]
+        })
+      });
+      
+      const json = (await response.json()) as any;
+      if (json.result) {
+        result = json.result;
+        break;
+      }
+      
+      if (json.error) {
+        console.warn(`[solana-verify] RPC returned error (attempt ${6 - retries + 1}):`, json.error);
+      } else {
+        console.warn(`[solana-verify] Transaction not indexed yet (attempt ${6 - retries + 1}):`, txSig);
+      }
+    } catch (err) {
+      console.warn(`[solana-verify] Fetch error (attempt ${6 - retries + 1}):`, err);
     }
     
-    const result = json.result;
+    if (retries === 0) break;
+    retries--;
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+  }
+
+  if (!result) {
+    console.error("[solana-verify] RPC failed to retrieve split transaction after retries:", txSig);
+    return false;
+  }
     
     // Ensure transaction was successful
     if (result.meta && result.meta.err) {
