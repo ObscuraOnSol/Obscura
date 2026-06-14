@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { useConnection } from "@solana/wallet-adapter-react";
 import { HARDWARE_LIST } from "@/lib/hardware";
+import confetti from "canvas-confetti";
 
 import { FadeIn, StaggerContainer, StaggerItem } from "@/components/motion";
 import { marketApi, providersApi, type ProviderRow } from "@/lib/api";
@@ -269,6 +270,26 @@ function ProvideGpuForm({ onRegistered }: { onRegistered: () => void }) {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
+  useEffect(() => {
+    if (success) {
+      confetti({
+        particleCount: 150,
+        spread: 80,
+        origin: { y: 0.6 }
+      });
+      
+      const timer = setTimeout(() => {
+        confetti({
+          particleCount: 80,
+          spread: 100,
+          origin: { y: 0.6 }
+        });
+      }, 250);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [success]);
+
   const rateNum = parseFloat(rate);
   const calculatedCollateral = isNaN(rateNum) ? 0 : rateNum * 17.78;
   const sellerProtocolFee = calculatedCollateral * 0.007;
@@ -408,12 +429,7 @@ function ProvideGpuForm({ onRegistered }: { onRegistered: () => void }) {
             </div>
           )}
 
-          {success && (
-            <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 text-xs text-primary flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 shrink-0" />
-              <span>GPU node capacity successfully registered and collateral locked!</span>
-            </div>
-          )}
+
 
           <div className="space-y-4">
             {/* Hardware Model & Custom */}
@@ -822,6 +838,50 @@ function ProvideGpuForm({ onRegistered }: { onRegistered: () => void }) {
                   ))}
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {success && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="relative w-full max-w-md rounded-2xl border border-border/80 bg-[#0c0d10] p-8 shadow-2xl flex flex-col items-center text-center text-foreground animate-in zoom-in-95 duration-200">
+            {/* Green glowing circle with check icon */}
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 mb-6 shadow-[0_0_20px_rgba(16,185,129,0.1)]">
+              <CheckCircle2 className="h-8 w-8 text-emerald-400 animate-bounce" />
+            </div>
+
+            <h3 className="text-xl font-bold text-foreground tracking-tight">
+              Registration Successful!
+            </h3>
+            
+            <p className="mt-3 text-xs leading-relaxed text-muted-foreground max-w-sm">
+              Your GPU node capacity is now successfully registered and active. The required collateral lock has been established and verified on-chain.
+            </p>
+
+            <div className="mt-6 w-full rounded-xl border border-border/40 bg-card/30 p-4 space-y-2.5 text-left text-xs">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Registered Hardware:</span>
+                <span className="font-semibold text-foreground">{finalGpu}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Lease Rate:</span>
+                <span className="font-semibold text-foreground">{fmtUsdHr(rateNum)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Collateral Locked:</span>
+                <span className="font-semibold text-foreground">{calculatedCollateral.toFixed(4)} USDC</span>
+              </div>
+            </div>
+
+            <div className="mt-8 flex gap-3 w-full">
+              <Button
+                type="button"
+                onClick={() => setSuccess(false)}
+                className="flex-1 py-2.5 font-semibold"
+              >
+                Okay
+              </Button>
             </div>
           </div>
         </div>
