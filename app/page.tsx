@@ -136,6 +136,13 @@ function Hero() {
       <div className="container relative flex flex-col items-center pb-24 pt-28 text-center md:pt-36">
         <HeroStagger className="flex flex-col items-center">
           <HeroItem>
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/5 px-3.5 py-1 text-xs font-mono text-primary mb-6 animate-pulse">
+              <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+              CA: Coming Soon
+            </span>
+          </HeroItem>
+
+          <HeroItem>
             <h1 className="max-w-4xl text-5xl font-bold leading-[1.05] tracking-tight sm:text-6xl md:text-7xl lg:text-8xl">
               Compute
               <br />
@@ -538,6 +545,9 @@ function SiteFooter() {
           <div className="mt-16 flex flex-col items-center justify-between gap-4 border-t border-border pt-8 md:flex-row">
             <p className="data text-xs text-muted-foreground/50">
               © {new Date().getFullYear()} Obscura. Compute in the dark.
+            </p>
+            <p className="data text-xs text-primary font-mono font-medium animate-pulse">
+              CA: Coming Soon
             </p>
             <p className="data text-xs text-muted-foreground/40">
               Pseudonymous · No KYC · USDC-settled
