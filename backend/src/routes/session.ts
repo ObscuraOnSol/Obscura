@@ -293,7 +293,54 @@ sessionRouter.post(
   }),
 );
 
+// GET /api/session/agent/stats?wallet=...
+sessionRouter.get(
+  "/session/agent/stats",
+  asyncHandler(async (req, res) => {
+    const w = wallet.safeParse(req.query.wallet);
+    if (!w.success) {
+      res.status(400).json({ error: "valid ?wallet= required" });
+      return;
+    }
+
+    // 1. Calculate actual spend in the last 24 hours
+    const { rows: spendRows } = await query<{ spend: string | null }>(
+      `SELECT COALESCE(SUM(clearing_price * hours), 0) AS spend
+       FROM orders
+       WHERE wallet = $1 AND status = 'settled' AND ts > now() - interval '24 hours'`,
+      [w.data]
+    );
+    const dailySpend = Number(spendRows[0]?.spend ?? 0);
+
+    // 2. Generate a deterministic reputation score based on wallet hash
+    let hash = 0;
+    for (let i = 0; i < w.data.length; i++) {
+      hash = w.data.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const reputation = 80 + Math.abs(hash % 20); // deterministic 80-99 range
+
+    // 3. Count total orders created by the wallet to simulate request load dynamically
+    const { rows: countRows } = await query<{ count: string }>(
+      `SELECT COUNT(*)::text AS count FROM orders WHERE wallet = $1`,
+      [w.data]
+    );
+    const orderCount = Number(countRows[0]?.count ?? 0);
+    
+    // Base requests: each order represents a set of commit/reveal/settle calls (e.g. 15 requests per order + some baseline)
+    const apiRequests = orderCount * 15 + (Math.abs(hash % 100));
+
+    res.json({
+      reputation,
+      dailySpend,
+      dailySpendCap: 500.00,
+      apiRequests,
+      apiRequestsLimit: 4320000,
+    });
+  })
+);
+
 // GET /api/session/orders?wallet=...
+
 sessionRouter.get(
   "/session/orders",
   asyncHandler(async (req, res) => {

@@ -157,7 +157,21 @@ export const ordersApi = {
     }>(`/api/session/orders/${id}/connection`),
 };
 
+export interface AgentStats {
+  reputation: number;
+  dailySpend: number;
+  dailySpendCap: number;
+  apiRequests: number;
+  apiRequestsLimit: number;
+}
+
+export const agentApi = {
+  stats: (wallet: string) =>
+    call<AgentStats>(`/api/session/agent/stats?wallet=${encodeURIComponent(wallet)}`),
+};
+
 export interface ApiKey {
+
   id: string;
   masked: string;
   tier: string;
