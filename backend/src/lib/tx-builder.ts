@@ -1,67 +1,14 @@
-import { Connection, PublicKey, Transaction, TransactionInstruction, SystemProgram } from "@solana/web3.js";
+import { Connection, PublicKey, Transaction } from "@solana/web3.js";
+import { 
+  getAssociatedTokenAddressSync, 
+  createAssociatedTokenAccountInstruction, 
+  createTransferInstruction 
+} from "@solana/spl-token";
 import { env } from "./env.ts";
-
-const TOKEN_PROGRAM_ID = new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
-const ASSOCIATED_TOKEN_PROGRAM_ID = new PublicKey("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8kn");
-const RENT_SYSVAR_ID = new PublicKey("SysvarRent111111111111111111111111111111111");
 
 function getUsdcMint(): PublicKey {
   const isMainnet = env.network === "mainnet" || env.network === "mainnet-beta";
   return new PublicKey(isMainnet ? env.usdcMint : env.usdcMintDevnet);
-}
-
-function getAssociatedTokenAddress(mint: PublicKey, owner: PublicKey): PublicKey {
-  return PublicKey.findProgramAddressSync(
-    [owner.toBuffer(), TOKEN_PROGRAM_ID.toBuffer(), mint.toBuffer()],
-    ASSOCIATED_TOKEN_PROGRAM_ID
-  )[0];
-}
-
-function createAssociatedTokenAccountInstruction(
-  payer: PublicKey,
-  associatedToken: PublicKey,
-  owner: PublicKey,
-  mint: PublicKey
-): TransactionInstruction {
-  return new TransactionInstruction({
-    keys: [
-      { pubkey: payer, isSigner: true, isWritable: true },
-      { pubkey: associatedToken, isSigner: false, isWritable: true },
-      { pubkey: owner, isSigner: false, isWritable: false },
-      { pubkey: mint, isSigner: false, isWritable: false },
-      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
-      { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
-      { pubkey: RENT_SYSVAR_ID, isSigner: false, isWritable: false }
-    ],
-    programId: ASSOCIATED_TOKEN_PROGRAM_ID,
-    data: Buffer.alloc(0)
-  });
-}
-
-function createTransferInstruction(
-  source: PublicKey,
-  destination: PublicKey,
-  owner: PublicKey,
-  amount: number
-): TransactionInstruction {
-  const data = Buffer.alloc(9);
-  data.writeUInt8(3, 0); // Transfer instruction index is 3
-  
-  // Write uint64 amount (little endian)
-  const low = amount % 0x100000000;
-  const high = Math.floor(amount / 0x100000000);
-  data.writeUInt32LE(low, 1);
-  data.writeUInt32LE(high, 5);
-  
-  return new TransactionInstruction({
-    keys: [
-      { pubkey: source, isSigner: false, isWritable: true },
-      { pubkey: destination, isSigner: false, isWritable: true },
-      { pubkey: owner, isSigner: true, isWritable: false }
-    ],
-    programId: TOKEN_PROGRAM_ID,
-    data
-  });
 }
 
 export async function buildSplitTransferTx(
@@ -82,9 +29,17 @@ export async function buildSplitTransferTx(
   const recipient1 = new PublicKey(recipient1Address);
   const recipient2 = new PublicKey(recipient2Address);
   
-  const senderAta = getAssociatedTokenAddress(mint, payer);
-  const recipient1Ata = getAssociatedTokenAddress(mint, recipient1);
-  const recipient2Ata = getAssociatedTokenAddress(mint, recipient2);
+  // Find sender token account dynamically (handle non-standard/legacy token accounts)
+  const tokenAccounts = await connection.getTokenAccountsByOwner(payer, { mint });
+  let senderAta: PublicKey;
+  if (tokenAccounts.value.length > 0) {
+    senderAta = tokenAccounts.value[0].pubkey;
+  } else {
+    senderAta = getAssociatedTokenAddressSync(mint, payer);
+  }
+
+  const recipient1Ata = getAssociatedTokenAddressSync(mint, recipient1);
+  const recipient2Ata = getAssociatedTokenAddressSync(mint, recipient2);
   
   const transaction = new Transaction();
   
