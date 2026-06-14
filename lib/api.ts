@@ -31,6 +31,7 @@ export interface SessionOrder {
   assignedProviderWallet?: string | null;
   clearingPrice?: number | null;
   hours?: number | null;
+  leaseStartedAt?: string | null;
 }
 
 // SIWS session token, set by the SessionProvider after sign-in. When present,

@@ -312,8 +312,9 @@ sessionRouter.get(
       assigned_provider_wallet: string | null;
       clearing_price: string | null;
       hours: number | null;
+      lease_started_at: Date | null;
     }>(
-      `SELECT id, gpu_type, commit_hash, revealed, status, ts, assigned_provider_wallet, clearing_price, hours
+      `SELECT id, gpu_type, commit_hash, revealed, status, ts, assigned_provider_wallet, clearing_price, hours, lease_started_at
        FROM orders WHERE wallet = $1 ORDER BY ts DESC LIMIT 100`,
       [w.data],
     );
@@ -328,6 +329,7 @@ sessionRouter.get(
         assignedProviderWallet: r.assigned_provider_wallet,
         clearingPrice: r.clearing_price ? Number(r.clearing_price) : null,
         hours: r.hours,
+        leaseStartedAt: r.lease_started_at,
       })),
     });
   }),

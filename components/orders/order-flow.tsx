@@ -811,12 +811,29 @@ function OrderRow({
   const activeIdx = PHASES.indexOf(order.status as (typeof PHASES)[number]);
   const cancelled = order.status === "cancelled";
 
+  const isExpired = useMemo(() => {
+    if (order.status !== "settled" || !order.leaseStartedAt || !order.hours) {
+      return false;
+    }
+    const startedTime = new Date(order.leaseStartedAt).getTime();
+    // Default to 1 hour (3600000 ms)
+    const escrowHourMs = 60 * 60 * 1000;
+    const expirationTime = startedTime + order.hours * escrowHourMs;
+    return Date.now() >= expirationTime;
+  }, [order]);
+
   return (
     <div className="rounded-xl border border-border bg-card/40 p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <span className="font-semibold">{order.gpuType}</span>
-          <PhaseBadge status={order.status} />
+          {isExpired ? (
+            <span className="data inline-flex items-center rounded-full border border-destructive/40 text-destructive bg-destructive/5 px-2.5 py-0.5 text-[10px] uppercase tracking-[0.16em]">
+              Expired
+            </span>
+          ) : (
+            <PhaseBadge status={order.status} />
+          )}
         </div>
         <div className="data text-xs text-muted-foreground">
           {shortHash(`0x${order.commitHash}`)}
@@ -909,7 +926,7 @@ function OrderRow({
         )}
         
         {order.status === "settled" && (
-          <Button size="sm" variant="white" onClick={onConnect}>
+          <Button size="sm" variant="white" onClick={onConnect} disabled={isExpired}>
             <Terminal className="h-3.5 w-3.5 mr-1.5" /> Connect
           </Button>
         )}
