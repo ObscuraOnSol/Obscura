@@ -103,9 +103,27 @@ export function OrderFlow() {
   const [error, setError] = useState<string | null>(null);
   const [modalOrder, setModalOrder] = useState<SessionOrder | null>(null);
   const [connectOrder, setConnectOrder] = useState<SessionOrder | null>(null);
+  const [connectionDetails, setConnectionDetails] = useState<{
+    host: string;
+    port: string;
+    username: string;
+    password?: string;
+    webCliUrl: string;
+  } | null>(null);
+  const [loadingConnection, setLoadingConnection] = useState(false);
 
-  const handleOpenConnect = (o: SessionOrder) => {
+  const handleOpenConnect = async (o: SessionOrder) => {
     setConnectOrder(o);
+    setLoadingConnection(true);
+    setConnectionDetails(null);
+    try {
+      const details = await ordersApi.connection(o.id);
+      setConnectionDetails(details);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load connection details");
+    } finally {
+      setLoadingConnection(false);
+    }
   };
 
   useEffect(() => setSecret(randomSecretHex()), []);
@@ -500,78 +518,92 @@ export function OrderFlow() {
 
               {/* Modal Content */}
               <div className="mt-6 space-y-4">
-                {/* Connection Details box */}
-                <div className="space-y-3.5 text-sm">
-                  {/* Host Field */}
-                  <div className="flex flex-col gap-1.5 border-b border-border/40 pb-3.5">
-                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Host Address</span>
-                    <div className="flex items-center justify-between gap-2 rounded-lg border border-border bg-background/50 px-3 py-2 font-mono text-xs text-foreground">
-                      <span className="truncate">localhost</span>
-                      <CopyText text="localhost" />
+                {loadingConnection ? (
+                  <div className="flex flex-col items-center justify-center py-12 space-y-4">
+                    <Loader2 className="animate-spin h-8 w-8 text-primary" />
+                    <p className="text-xs text-muted-foreground font-sans">Provisioning secure tunnel connection...</p>
+                  </div>
+                ) : connectionDetails ? (
+                  <>
+                    {/* Connection Details box */}
+                    <div className="space-y-3.5 text-sm">
+                      {/* Host Field */}
+                      <div className="flex flex-col gap-1.5 border-b border-border/40 pb-3.5">
+                        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Host Address</span>
+                        <div className="flex items-center justify-between gap-2 rounded-lg border border-border bg-background/50 px-3 py-2 font-mono text-xs text-foreground">
+                          <span className="truncate">{connectionDetails.host}</span>
+                          <CopyText text={connectionDetails.host} />
+                        </div>
+                      </div>
+
+                      {/* Port Field */}
+                      <div className="flex flex-col gap-1.5 border-b border-border/40 pb-3.5">
+                        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Port</span>
+                        <div className="flex items-center justify-between gap-2 rounded-lg border border-border bg-background/50 px-3 py-2 font-mono text-xs text-foreground">
+                          <span className="truncate">{connectionDetails.port}</span>
+                          <CopyText text={connectionDetails.port} />
+                        </div>
+                      </div>
+
+                      {/* User Field */}
+                      <div className="flex flex-col gap-1.5 border-b border-border/40 pb-3.5">
+                        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Username</span>
+                        <div className="flex items-center justify-between gap-2 rounded-lg border border-border bg-background/50 px-3 py-2 font-mono text-xs text-foreground">
+                          <span className="truncate">{connectionDetails.username}</span>
+                          <CopyText text={connectionDetails.username} />
+                        </div>
+                      </div>
+
+                      {/* Password Field */}
+                      <div className="flex flex-col gap-1.5 border-b border-border/40 pb-3.5">
+                        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Credentials / Password</span>
+                        <div className="flex items-center justify-between gap-2 rounded-lg border border-border bg-background/50 px-3 py-2 font-mono text-xs text-foreground">
+                          <span className="truncate">{connectionDetails.password || "no password"}</span>
+                          <CopyText text={connectionDetails.password || ""} />
+                        </div>
+                      </div>
+
+                      {/* Command Field */}
+                      <div className="flex flex-col gap-1.5 border-b border-border/40 pb-3.5">
+                        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">SSH Command</span>
+                        <div className="flex items-center justify-between gap-2 rounded-lg border border-border bg-background/50 px-3 py-2 font-mono text-xs text-primary">
+                          <span className="truncate">ssh {connectionDetails.username}@{connectionDetails.host} -p {connectionDetails.port}</span>
+                          <CopyText text={`ssh ${connectionDetails.username}@${connectionDetails.host} -p ${connectionDetails.port}`} />
+                        </div>
+                      </div>
                     </div>
-                  </div>
 
-                  {/* Port Field */}
-                  <div className="flex flex-col gap-1.5 border-b border-border/40 pb-3.5">
-                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Port</span>
-                    <div className="flex items-center justify-between gap-2 rounded-lg border border-border bg-background/50 px-3 py-2 font-mono text-xs text-foreground">
-                      <span className="truncate">2222</span>
-                      <CopyText text="2222" />
+                    {/* Instructions */}
+                    <div className="rounded-xl border border-dashed border-border/60 bg-muted/20 p-4 space-y-2.5">
+                      <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                        <Info className="h-4 w-4 text-primary shrink-0" />
+                        Instructions
+                      </div>
+                      <p className="text-xs text-muted-foreground leading-normal font-sans">
+                        Open your terminal and run the copied SSH command. Use the provided password when prompted. Once connected, your environment is ready with pre-configured NVIDIA drivers and dependencies.
+                      </p>
+                      <p className="text-xs text-primary font-medium leading-normal font-sans">
+                        ⚠️ Safety Recommendation: Since this connection is provisional, you should change the password immediately upon entering the server using the <code className="bg-white/5 px-1 py-0.5 rounded font-mono text-[10px]">passwd</code> command.
+                      </p>
                     </div>
-                  </div>
 
-                  {/* User Field */}
-                  <div className="flex flex-col gap-1.5 border-b border-border/40 pb-3.5">
-                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Username</span>
-                    <div className="flex items-center justify-between gap-2 rounded-lg border border-border bg-background/50 px-3 py-2 font-mono text-xs text-foreground">
-                      <span className="truncate">root</span>
-                      <CopyText text="root" />
-                    </div>
+                    {/* Use Web CLI option button */}
+                    <a
+                      href={connectionDetails.webCliUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2 w-full mt-4"
+                    >
+                      <Terminal className="h-4 w-4 text-primary" />
+                      Use Web CLI
+                    </a>
+                  </>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-12 text-destructive space-y-2">
+                    <AlertTriangle className="h-8 w-8" />
+                    <p className="text-xs font-sans">Failed to load connection credentials.</p>
                   </div>
-
-                  {/* Password Field */}
-                  <div className="flex flex-col gap-1.5 border-b border-border/40 pb-3.5">
-                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Credentials / Password</span>
-                    <div className="flex items-center justify-between gap-2 rounded-lg border border-border bg-background/50 px-3 py-2 font-mono text-xs text-foreground">
-                      <span className="truncate">obscura</span>
-                      <CopyText text="obscura" />
-                    </div>
-                  </div>
-
-                  {/* Command Field */}
-                  <div className="flex flex-col gap-1.5 border-b border-border/40 pb-3.5">
-                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground">SSH Command</span>
-                    <div className="flex items-center justify-between gap-2 rounded-lg border border-border bg-background/50 px-3 py-2 font-mono text-xs text-primary">
-                      <span className="truncate">ssh root@localhost -p 2222</span>
-                      <CopyText text="ssh root@localhost -p 2222" />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Instructions */}
-                <div className="rounded-xl border border-dashed border-border/60 bg-muted/20 p-4 space-y-2.5">
-                  <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
-                    <Info className="h-4 w-4 text-primary shrink-0" />
-                    Instructions
-                  </div>
-                  <p className="text-xs text-muted-foreground leading-normal font-sans">
-                    Open your terminal and run the copied SSH command. Use the provided password when prompted. Once connected, your environment is ready with pre-configured NVIDIA drivers and dependencies.
-                  </p>
-                  <p className="text-xs text-primary font-medium leading-normal font-sans">
-                    ⚠️ Safety Recommendation: Since this connection is provisional, you should change the password immediately upon entering the server using the <code className="bg-white/5 px-1 py-0.5 rounded font-mono text-[10px]">passwd</code> command.
-                  </p>
-                </div>
-
-                {/* Use Web CLI option button */}
-                <a
-                  href="http://localhost:7681"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2 w-full mt-4"
-                >
-                  <Terminal className="h-4 w-4 text-primary" />
-                  Use Web CLI
-                </a>
+                )}
               </div>
 
               {/* Modal Footer */}

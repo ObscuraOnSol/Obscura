@@ -11,4 +11,9 @@ export const env = {
     .split(",")
     .map((o) => o.trim())
     .filter(Boolean),
+  sshHost: process.env.SSH_HOST ?? "localhost",
+  sshPort: process.env.SSH_PORT ?? "2222",
+  sshUsername: process.env.SSH_USERNAME ?? "root",
+  sshPassword: process.env.SSH_PASSWORD ?? "obscura",
+  webCliUrl: process.env.WEB_CLI_URL ?? "http://localhost:7681",
 };

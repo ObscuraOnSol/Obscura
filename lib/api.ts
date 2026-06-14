@@ -104,6 +104,15 @@ export const ordersApi = {
     call<{ orders: SessionOrder[] }>(
       `/api/session/orders?wallet=${encodeURIComponent(wallet)}`,
     ),
+
+  connection: (id: string) =>
+    call<{
+      host: string;
+      port: string;
+      username: string;
+      password?: string;
+      webCliUrl: string;
+    }>(`/api/session/orders/${id}/connection`),
 };
 
 export interface ApiKey {

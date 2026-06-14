@@ -5,6 +5,7 @@ import { query } from "../db/index.ts";
 import { asyncHandler } from "../lib/async.ts";
 import { computeCommitHash, commitMatches } from "../lib/commit.ts";
 import type { SessionRequest } from "../lib/session.ts";
+import { env } from "../lib/env.ts";
 
 /**
  * Browser/session order API for wallet-connected users (as opposed to the
@@ -174,6 +175,29 @@ sessionRouter.get(
         status: r.status,
         ts: r.ts,
       })),
+    });
+  }),
+);
+
+// GET /api/session/orders/:id/connection
+sessionRouter.get(
+  "/session/orders/:id/connection",
+  asyncHandler(async (req, res) => {
+    const id = String(req.params.id);
+    const { rows } = await query(
+      `SELECT id FROM orders WHERE id = $1`,
+      [id]
+    );
+    if (rows.length === 0) {
+      res.status(404).json({ error: "order not found" });
+      return;
+    }
+    res.json({
+      host: env.sshHost,
+      port: env.sshPort,
+      username: env.sshUsername,
+      password: env.sshPassword,
+      webCliUrl: env.webCliUrl,
     });
   }),
 );
