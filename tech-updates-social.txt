@@ -1,0 +1,12 @@
+[6/14/26 8:30 PM] Paschal Chukwu: Wave 1 — Programmatic Agent Integration & API Escrows
+1. Automated reveal, transaction building, and settlement endpoints. AI agents can now lease compute programmatically without using a web interface. They submit bids, reveal pricing, build settlement transactions, and complete the settlement cycle fully through the API.
+2. X402 Payment Gate. Matched but unpaid orders now respond with an HTTP 402 Payment Required status code, returning the exact USDC price, the target escrow wallet, and a checkout URL. The API only exposes SSH access credentials once the on-chain payment settles, or returns 410 Gone if the lease window expires.
+3. Interactive Swagger documentation. The complete OpenAPI specification is served at raw JSON endpoints, and the API documentation route is linked directly from the header. Developers can inspect, test, and integrate the programmatic agent lifecycle end-to-end.
+4. Live console metrics. The Agent Console displays real-time rolling spend caps, request counts, and billing data fetched dynamically from the database, giving developers absolute visibility into their agent's active resource usage.
+
+[6/14/26 8:30 PM] Paschal Chukwu: Wave 2 — Branding, SEO, & Live Interface Upgrades
+5. Environment-gated Coming Soon mode. Added a global gating switch that redirects all dashboard and app route traffic to the landing page and displays a sleek Coming Soon modal. The public site remains accessible while keeping the core application private.
+6. OpenGraph and Twitter crawl verification. Hardcoded the canonical production site URL in the layout metadata base. Crawlers on Telegram, Twitter, and indexer sites can now correctly render the rich preview banner image and page summary card.
+7. Favicon and branding integration. Configured a high-quality icon converted from the official logo to act as the primary favicon and shortcut icon across browsers and mobile bookmarks.
+8. Interactive price scramble marquee. Swapped the static clearing price feed for an infinite marquee featuring dynamic price fluctuations (ranging ±25% of base price) updating every few seconds. Custom GPU and USDC logos are embedded alongside the text, and numbers use a fast scramble animation to simulate a real-time trading terminal.
+9. Card hover watermarks. Standardized the card background decoration in the lifecycle section to match the dashboard metrics cards. Features fainted, tilted green-tinted Lucide icons that rotate, scale up, and light up dynamically upon mouse hover.
