@@ -33,7 +33,11 @@ export async function verifyUsdcTransfer(
           method: "getTransaction",
           params: [
             txSig,
-            { encoding: "jsonParsed", maxSupportedTransactionVersion: 0 }
+            {
+              encoding: "jsonParsed",
+              commitment: "confirmed",
+              maxSupportedTransactionVersion: 0
+            }
           ]
         })
       });
@@ -143,7 +147,11 @@ export async function verifyUsdcSplitTransfer(
           method: "getTransaction",
           params: [
             txSig,
-            { encoding: "jsonParsed", maxSupportedTransactionVersion: 0 }
+            {
+              encoding: "jsonParsed",
+              commitment: "confirmed",
+              maxSupportedTransactionVersion: 0
+            }
           ]
         })
       });
