@@ -36,6 +36,7 @@ interface Intent {
   price_micro: string;
   qty: number;
   network: string;
+  wallet: string;
 }
 
 export interface BatchResult {
@@ -65,7 +66,7 @@ export async function runBatch(): Promise<BatchResult> {
   const client = await pool.connect();
   try {
     const { rows: intents } = await client.query<Intent>(
-      `SELECT oi.order_id, oi.gpu_type, oi.price_micro, oi.qty, o.network
+      `SELECT oi.order_id, oi.gpu_type, oi.price_micro, oi.qty, o.network, o.wallet
        FROM order_intents oi
        JOIN orders o ON oi.order_id = o.id`,
     );
@@ -187,6 +188,38 @@ export async function runBatch(): Promise<BatchResult> {
            WHERE id = $9`,
           [host, port, username, password, provWallet, clearingPrice, orderHours, batchId, orderId],
         );
+
+        const buyerWallet = orderIntent?.wallet;
+        if (buyerWallet) {
+          let orderFillsEnabled = true;
+          try {
+            const { rows: userRows } = await client.query<{
+              notification_prefs: any;
+            }>(
+              `SELECT notification_prefs FROM users WHERE wallet = $1`,
+              [buyerWallet]
+            );
+            if (userRows.length > 0 && userRows[0].notification_prefs) {
+              const prefs = userRows[0].notification_prefs;
+              if (prefs.orderFillsEnabled === false) {
+                orderFillsEnabled = false;
+              }
+            }
+          } catch (err) {
+            console.error(`[matching] failed to read notification prefs for buyer ${buyerWallet}:`, err);
+          }
+
+          if (orderFillsEnabled) {
+            broadcast("order_fill", {
+              orderId,
+              wallet: buyerWallet,
+              gpuType: gpu,
+              clearingPrice,
+              network: net,
+              batchId,
+            });
+          }
+        }
       }
 
       await client.query(`DELETE FROM order_intents WHERE order_id = ANY($1::uuid[])`, [

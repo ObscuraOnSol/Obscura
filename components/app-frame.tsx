@@ -49,9 +49,12 @@ export function AppFrame({
   const { wallet } = useWallet();
   const [notifications, setNotifications] = useState<{
     id: string;
+    type: "price_alert" | "order_fill";
     gpuType: string;
-    targetPrice: number;
+    targetPrice?: number;
     clearingPrice: number;
+    batchId?: number;
+    orderId?: string;
   }[]>([]);
 
   useEffect(() => {
@@ -74,6 +77,7 @@ export function AppFrame({
                   ...prev,
                   {
                     id: alert.id,
+                    type: "price_alert",
                     gpuType: alert.gpuType,
                     targetPrice: alert.targetPrice,
                     clearingPrice: alert.clearingPrice,
@@ -83,6 +87,26 @@ export function AppFrame({
                 // Auto dismiss after 10s
                 setTimeout(() => {
                   setNotifications((prev) => prev.filter((n) => n.id !== alert.id));
+                }, 10000);
+              }
+            } else if (msg.type === "order_fill") {
+              const fill = msg.data;
+              if (fill.wallet === wallet) {
+                setNotifications((prev) => [
+                  ...prev,
+                  {
+                    id: fill.orderId,
+                    type: "order_fill",
+                    gpuType: fill.gpuType,
+                    clearingPrice: fill.clearingPrice,
+                    batchId: fill.batchId,
+                    orderId: fill.orderId,
+                  },
+                ]);
+
+                // Auto dismiss after 10s
+                setTimeout(() => {
+                  setNotifications((prev) => prev.filter((n) => n.id !== fill.orderId));
                 }, 10000);
               }
             }
@@ -211,7 +235,7 @@ export function AppFrame({
         )}
       </AnimatePresence>
 
-      {/* Real-time Price Alert Notifications */}
+      {/* Real-time Price Alert & Order Fill Notifications */}
       <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none">
         <AnimatePresence>
           {notifications.map((n) => (
@@ -220,20 +244,43 @@ export function AppFrame({
               initial={{ opacity: 0, y: 50, scale: 0.9 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
-              className="pointer-events-auto flex gap-3 rounded-xl border border-amber-500/30 bg-card/90 p-4 shadow-xl backdrop-blur-md"
+              className={`pointer-events-auto flex gap-3 rounded-xl border p-4 shadow-xl backdrop-blur-md ${
+                n.type === "price_alert"
+                  ? "border-amber-500/30 bg-card/90"
+                  : "border-primary/30 bg-card/90"
+              }`}
             >
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-500 shrink-0">
+              <div className={`flex h-9 w-9 items-center justify-center rounded-lg shrink-0 border ${
+                n.type === "price_alert"
+                  ? "bg-amber-500/10 border-amber-500/20 text-amber-500"
+                  : "bg-primary/10 border-primary/20 text-primary"
+              }`}>
                 <Bell className="h-4.5 w-4.5 animate-bounce" />
               </div>
               <div className="flex-1 min-w-0">
-                <h4 className="text-xs font-semibold text-foreground">Price Alert Triggered!</h4>
+                <h4 className="text-xs font-semibold text-foreground">
+                  {n.type === "price_alert" ? "Price Alert Triggered!" : "Order Matched & Filled!"}
+                </h4>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  <span className="font-semibold text-foreground">{n.gpuType}</span> clearing price dropped to{" "}
-                  <span className="font-semibold text-emerald-500 font-mono">${n.clearingPrice.toFixed(2)}/hr</span> (Target was ${n.targetPrice.toFixed(2)}).
+                  {n.type === "price_alert" ? (
+                    <>
+                      <span className="font-semibold text-foreground">{n.gpuType}</span> clearing price dropped to{" "}
+                      <span className="font-semibold text-emerald-500 font-mono">${n.clearingPrice.toFixed(2)}/hr</span> (Target was ${n.targetPrice?.toFixed(2)}).
+                    </>
+                  ) : (
+                    <>
+                      Your order for <span className="font-semibold text-foreground">{n.gpuType}</span> was filled in batch{" "}
+                      <span className="font-semibold text-foreground font-mono">#{n.batchId}</span> at{" "}
+                      <span className="font-semibold text-emerald-500 font-mono">${n.clearingPrice.toFixed(2)}/hr</span>.
+                    </>
+                  )}
                 </p>
                 <div className="mt-2.5 flex items-center gap-2">
-                  <Link href="/settings" className="text-[10px] font-semibold uppercase tracking-wider text-primary hover:underline">
-                    View Alerts
+                  <Link
+                    href={n.type === "price_alert" ? "/settings" : "/orders"}
+                    className="text-[10px] font-semibold uppercase tracking-wider text-primary hover:underline"
+                  >
+                    {n.type === "price_alert" ? "View Alerts" : "View Connection"}
                   </Link>
                   <span className="text-[10px] text-muted-foreground/60">•</span>
                   <button
