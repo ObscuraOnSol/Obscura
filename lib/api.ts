@@ -273,6 +273,18 @@ export const notificationsApi = {
     }),
 };
 
+export interface LeaderboardRow {
+  rank: number;
+  wallet: string;
+  totalLeases: number;
+  totalHours: number;
+  totalSpend: number;
+}
+
+export const leaderboardApi = {
+  get: () => call<{ leaderboard: LeaderboardRow[] }>("/api/leaderboard"),
+};
+
 export const authApi = {
   nonce: () =>
     call<{ nonce: string; statement: string }>("/api/auth/nonce", {

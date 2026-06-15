@@ -26,7 +26,7 @@ authRouter.post(
 );
 
 const verifySchema = z.object({
-  wallet: z.string().regex(/^[1-9A-HJ-NP-Za-km-z]{32,44}$/, "invalid Solana address"),
+  wallet: z.string().regex(/^(paper_[a-zA-Z0-9]+|[1-9A-HJ-NP-Za-km-z]{32,44})$/, "invalid Solana address"),
   nonce: z.string().length(32),
   signature: z.string().min(1),
 });
@@ -52,8 +52,10 @@ authRouter.post(
       return;
     }
 
-    // Real ed25519 verification of the signed statement.
-    if (!verifySiws(wallet, nonce, signature)) {
+    const isPaper = wallet.startsWith("paper_");
+
+    // Real ed25519 verification of the signed statement, bypassed for paper wallets
+    if (!isPaper && !verifySiws(wallet, nonce, signature)) {
       res.status(401).json({ error: "signature verification failed" });
       return;
     }
@@ -64,9 +66,9 @@ authRouter.post(
       [nonce, wallet],
     );
     await query(
-      `INSERT INTO users (wallet, last_signed_in) VALUES ($1, now())
-       ON CONFLICT (wallet) DO UPDATE SET last_signed_in = now()`,
-      [wallet],
+      `INSERT INTO users (wallet, is_paper, last_signed_in) VALUES ($1, $2, now())
+       ON CONFLICT (wallet) DO UPDATE SET last_signed_in = now(), is_paper = EXCLUDED.is_paper`,
+      [wallet, isPaper],
     );
 
     res.json({ wallet, session: signSession(wallet) });

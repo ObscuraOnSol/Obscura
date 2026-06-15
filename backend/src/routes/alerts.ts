@@ -8,7 +8,7 @@ import { env } from "../lib/env.ts";
 
 export const alertsRouter = Router();
 
-const walletSchema = z.string().regex(/^[1-9A-HJ-NP-Za-km-z]{32,44}$/, "invalid Solana address");
+const walletSchema = z.string().regex(/^(paper_[a-zA-Z0-9]+|[1-9A-HJ-NP-Za-km-z]{32,44})$/, "invalid Solana address");
 const uuidSchema = z.string().uuid("invalid UUID format");
 
 // POST /api/session/price-alerts — Create a price alert

@@ -11,7 +11,7 @@ export const providersRouter = Router();
 
 // POST /api/providers/build-register-tx — build serialized listing tx.
 const buildListingSchema = z.object({
-  wallet: z.string().regex(/^[1-9A-HJ-NP-Za-km-z]{32,44}$/, "invalid Solana address"),
+  wallet: z.string().regex(/^(paper_[a-zA-Z0-9]+|[1-9A-HJ-NP-Za-km-z]{32,44})$/, "invalid Solana address"),
   rate: z.number().positive(),
 });
 
@@ -49,7 +49,7 @@ providersRouter.post(
 
 // POST /api/providers — register GPU capacity as a node operator.
 const providerSchema = z.object({
-  wallet: z.string().regex(/^[1-9A-HJ-NP-Za-km-z]{32,44}$/, "invalid Solana address"),
+  wallet: z.string().regex(/^(paper_[a-zA-Z0-9]+|[1-9A-HJ-NP-Za-km-z]{32,44})$/, "invalid Solana address"),
   gpuType: z.string().min(1).max(64),
   capacity: z.number().int().positive(),
   stakeAmount: z.number().nonnegative(),

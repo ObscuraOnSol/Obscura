@@ -23,7 +23,7 @@ import { buildSplitTransferTx, buildSingleTransferTx } from "../lib/tx-builder.t
  */
 export const sessionRouter = Router();
 
-const wallet = z.string().regex(/^[1-9A-HJ-NP-Za-km-z]{32,44}$/, "invalid Solana address");
+const wallet = z.string().regex(/^(paper_[a-zA-Z0-9]+|[1-9A-HJ-NP-Za-km-z]{32,44})$/, "invalid Solana address");
 const commitHash = z.string().regex(/^(0x)?[0-9a-fA-F]{64}$/, "expected a 32-byte keccak hash");
 
 async function ensureUser(w: string): Promise<void> {
@@ -239,13 +239,26 @@ sessionRouter.post(
     const feeAmount = totalAmount * 0.005;
     const combinedAmount = totalAmount + feeAmount;
 
-    const ok = await verifyUsdcTransfer(
-      txSig,
-      w,
-      env.obscuraServiceWallet,
-      combinedAmount,
-      order.network,
+    // Check if the user is a paper trader
+    const { rows: userRows } = await query<{ is_paper: boolean }>(
+      `SELECT is_paper FROM users WHERE wallet = $1`,
+      [w]
     );
+    const isPaper = userRows.length > 0 && userRows[0].is_paper;
+
+    let ok = false;
+    if (isPaper) {
+      ok = true; // Bypassed for paper trading
+      console.log(`[session] bypassing USDC settlement verification for paper wallet ${w}`);
+    } else {
+      ok = await verifyUsdcTransfer(
+        txSig,
+        w,
+        env.obscuraServiceWallet,
+        combinedAmount,
+        order.network,
+      );
+    }
 
     if (!ok) {
       res.status(400).json({
