@@ -441,13 +441,17 @@ sessionRouter.get(
     const { rows } = await query<{
       id: string;
       status: string;
+      is_paper: boolean | null;
       assigned_host: string | null;
       assigned_port: string | null;
       assigned_username: string | null;
       assigned_password: string | null;
     }>(
-      `SELECT id, status, assigned_host, assigned_port, assigned_username, assigned_password 
-       FROM orders WHERE id = $1`,
+      `SELECT o.id, o.status, u.is_paper,
+              o.assigned_host, o.assigned_port, o.assigned_username, o.assigned_password
+       FROM orders o
+       LEFT JOIN users u ON u.wallet = o.wallet
+       WHERE o.id = $1`,
       [id]
     );
 
@@ -459,6 +463,16 @@ sessionRouter.get(
     const order = rows[0];
     if (order.status !== "settled") {
       res.status(400).json({ error: "order is not settled yet" });
+      return;
+    }
+
+    // Practice-mode orders never expose real server credentials.
+    if (order.is_paper) {
+      res.status(403).json({
+        error: "practice_mode",
+        message:
+          "This is a practice order — real connection details aren't issued. Turn off practice mode and purchase compute with real USDC.",
+      });
       return;
     }
 

@@ -18,6 +18,7 @@ import {
   ChevronDown,
   LogOut,
   Terminal,
+  FlaskConical,
   ArrowLeft,
   Coins,
   Cpu,
@@ -174,8 +175,13 @@ export function OrderFlow() {
 
   const handleOpenConnect = async (o: SessionOrder) => {
     setConnectOrder(o);
-    setLoadingConnection(true);
     setConnectionDetails(null);
+    // Practice mode: never request or reveal real server credentials.
+    if (isPaperModeActive) {
+      setLoadingConnection(false);
+      return;
+    }
+    setLoadingConnection(true);
     try {
       const details = await ordersApi.connection(o.id);
       setConnectionDetails(details);
@@ -733,7 +739,9 @@ export function OrderFlow() {
                     <Terminal className="h-5 w-5 text-primary" /> Compute Node Connection
                   </h3>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    SSH endpoint for the allocated {connectOrder.gpuType} instance.
+                    {isPaperModeActive
+                      ? `Practice order · ${connectOrder.gpuType}`
+                      : `SSH endpoint for the allocated ${connectOrder.gpuType} instance.`}
                   </p>
                 </div>
                 <button
@@ -748,7 +756,27 @@ export function OrderFlow() {
 
               {/* Modal Content */}
               <div className="mt-6 space-y-4">
-                {loadingConnection ? (
+                {isPaperModeActive ? (
+                  <div className="rounded-xl border border-primary/30 bg-primary/5 p-8 text-center">
+                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border border-primary/30 bg-primary/10">
+                      <FlaskConical className="h-6 w-6 text-primary" />
+                    </div>
+                    <h4 className="mt-4 text-base font-semibold text-foreground">
+                      Practice mode — no live server
+                    </h4>
+                    <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-muted-foreground font-sans">
+                      This was a simulated paper trade, so there&apos;s no real compute node to
+                      connect to. SSH credentials are only issued for orders settled with real USDC.
+                    </p>
+                    <p className="mx-auto mt-3 max-w-sm text-sm leading-relaxed text-foreground font-sans">
+                      To get real connection details, turn off practice mode and purchase compute
+                      with real USDC.
+                    </p>
+                    <Button size="sm" className="mt-5" onClick={() => setConnectOrder(null)}>
+                      Got it
+                    </Button>
+                  </div>
+                ) : loadingConnection ? (
                   <div className="flex flex-col items-center justify-center py-12 space-y-4">
                     <Loader2 className="animate-spin h-8 w-8 text-primary" />
                     <p className="text-xs text-muted-foreground font-sans">Provisioning secure tunnel connection...</p>
