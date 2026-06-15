@@ -100,6 +100,7 @@ export function MarketplaceLive() {
   const [rows, setRows] = useState<Row[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [priceHistories, setPriceHistories] = useState<Record<string, number[]>>({});
 
   const refreshList = () => {
     marketApi.providers()
@@ -109,6 +110,18 @@ export function MarketplaceLive() {
       .catch((e) =>
         setError(e instanceof Error ? e.message : "failed to load marketplace"),
       );
+
+    marketApi.pricesHistory()
+      .then((histRes) => {
+        const histories: Record<string, number[]> = {};
+        for (const [gpu, ticks] of Object.entries(histRes.history)) {
+          histories[gpu] = ticks.map((t: any) => t.price);
+        }
+        setPriceHistories(histories);
+      })
+      .catch((err) => {
+        console.error("Failed to load price histories:", err);
+      });
   };
 
   useEffect(() => {
@@ -193,13 +206,13 @@ export function MarketplaceLive() {
                         href={`/orders?gpuType=${encodeURIComponent(p.gpuType)}`}
                         className="group block rounded-xl border border-border bg-card/40 p-6 transition-all hover:border-primary/30 hover:bg-card/50 cursor-pointer text-left"
                       >
-                        <div className="flex items-baseline justify-between">
-                          <div>
-                            <div className="flex items-center gap-2 text-lg font-semibold">
-                              <Cpu className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
-                              <span>{p.gpuType}</span>
+                        <div className="flex items-center justify-between gap-4">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 text-lg font-semibold flex-wrap">
+                              <Cpu className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
+                              <span className="truncate">{p.gpuType}</span>
                               {p.capacity <= 0 && (
-                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20 shrink-0">
                                   Allocated
                                 </span>
                               )}
@@ -208,9 +221,23 @@ export function MarketplaceLive() {
                               Operator: {shortHash(p.wallet, 5, 4)}
                             </div>
                           </div>
-                          <div className="data flex items-center gap-1.5 text-xl font-bold text-primary">
-                            <img src="/usdc_logo.png" alt="USDC" className="h-4 w-4 object-contain rounded-full" />
-                            {fmtUsdHr(p.rateMicro / 1_000_000).replace("$", "")}
+                          
+                          <div className="flex items-center gap-4 shrink-0">
+                            {/* Sparkline price trend */}
+                            <div className="hidden sm:block">
+                              <Sparkline 
+                                data={
+                                  priceHistories[p.gpuType] && priceHistories[p.gpuType].length >= 2
+                                    ? priceHistories[p.gpuType]
+                                    : [p.rateMicro / 1_000_000, p.rateMicro / 1_000_000]
+                                } 
+                              />
+                            </div>
+                            
+                            <div className="data flex items-center gap-1.5 text-xl font-bold text-primary">
+                              <img src="/usdc_logo.png" alt="USDC" className="h-4 w-4 object-contain rounded-full" />
+                              {fmtUsdHr(p.rateMicro / 1_000_000).replace("$", "")}
+                            </div>
                           </div>
                         </div>
 
@@ -943,5 +970,74 @@ export function DataError({ message }: { message: string }) {
         </div>
       </div>
     </FadeIn>
+  );
+}
+
+interface SparklineProps {
+  data: number[];
+  width?: number;
+  height?: number;
+}
+
+export function Sparkline({ data, width = 110, height = 30 }: SparklineProps) {
+  if (!data || data.length < 2) {
+    return (
+      <svg width={width} height={height} className="text-muted-foreground/30">
+        <line x1={0} y1={height / 2} x2={width} y2={height / 2} stroke="currentColor" strokeWidth={1.5} strokeDasharray="2 2" />
+      </svg>
+    );
+  }
+
+  const min = Math.min(...data);
+  const max = Math.max(...data);
+  const range = max - min;
+  const padding = 2;
+  const effectiveHeight = height - padding * 2;
+
+  const points = data.map((val, index) => {
+    const x = (index / (data.length - 1)) * width;
+    const y = range === 0 
+      ? height / 2 
+      : height - padding - ((val - min) / range) * effectiveHeight;
+    return { x, y };
+  });
+
+  const pathD = points.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" ");
+  const areaD = `${pathD} L ${width.toFixed(1)} ${height.toFixed(1)} L 0 ${height.toFixed(1)} Z`;
+
+  const isUp = data[data.length - 1] >= data[0];
+  const strokeColor = isUp ? "rgb(16, 185, 129)" : "rgb(244, 63, 94)"; // emerald or rose
+  const gradientId = `sparkline-grad-${Math.random().toString(36).substring(2, 9)}`;
+
+  return (
+    <svg width={width} height={height} className="overflow-visible select-none pointer-events-none">
+      <defs>
+        <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={strokeColor} stopOpacity={0.25} />
+          <stop offset="100%" stopColor={strokeColor} stopOpacity={0.0} />
+        </linearGradient>
+      </defs>
+      
+      {/* Fill Underneath */}
+      <path d={areaD} fill={`url(#${gradientId})`} />
+
+      {/* Delineation path */}
+      <path
+        d={pathD}
+        fill="none"
+        stroke={strokeColor}
+        strokeWidth={1.5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+
+      {/* Pulse dot at the end */}
+      <circle
+        cx={points[points.length - 1].x}
+        cy={points[points.length - 1].y}
+        r={2.5}
+        fill={strokeColor}
+      />
+    </svg>
   );
 }

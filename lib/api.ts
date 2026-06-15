@@ -111,6 +111,8 @@ export const marketApi = {
     call<{ settlements: Settlement[] }>(`/api/settlements?limit=${limit}`),
   orderMetrics: () =>
     call<{ window: string; breakdown: OrderMetric[] }>("/api/orders/metrics"),
+  pricesHistory: () =>
+    call<{ history: Record<string, { price: number; ts: string }[]> }>("/api/market/prices/history"),
 };
 
 export const ordersApi = {
