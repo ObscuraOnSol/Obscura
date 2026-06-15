@@ -38,12 +38,14 @@ export async function processEscrowPayouts(): Promise<void> {
     const { rows: orders } = await client.query<{
       id: string;
       assigned_provider_wallet: string;
+      assigned_host: string;
+      assigned_port: string;
       clearing_price: string;
       hours: number;
       payouts_completed: number;
       lease_started_at: Date;
     }>(
-      `SELECT id, assigned_provider_wallet, clearing_price, hours, payouts_completed, lease_started_at
+      `SELECT id, assigned_provider_wallet, assigned_host, assigned_port, clearing_price, hours, payouts_completed, lease_started_at
        FROM orders
        WHERE status = 'settled'
          AND payouts_completed < hours
@@ -84,6 +86,17 @@ export async function processEscrowPayouts(): Promise<void> {
                WHERE id = $2`,
               [nextPayoutCount, order.id]
             );
+
+            // If the lease has fully finished (all payouts completed), free up provider capacity
+            if (nextPayoutCount === order.hours) {
+              console.log(`[escrow] Lease fully paid out for order ${order.id}. Restoring provider capacity...`);
+              await client.query(
+                `UPDATE providers 
+                 SET capacity = capacity + $1, updated_at = now()
+                 WHERE wallet = $2 AND host = $3 AND port = $4 AND status = 'active'`,
+                [order.hours, order.assigned_provider_wallet, order.assigned_host, order.assigned_port]
+              );
+            }
             
             order.payouts_completed = nextPayoutCount; // Update local loop state
             console.log(`[escrow] Payout successful. Tx: ${txSig}. Updated order ${order.id} payouts to ${nextPayoutCount}/${order.hours}`);
