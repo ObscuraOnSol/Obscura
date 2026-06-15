@@ -27,5 +27,5 @@ export const env = {
   telegramBotUsername: process.env.TELEGRAM_BOT_USERNAME ?? "",
   // Email fill receipts via Resend (#10). Inert unless a key is configured.
   resendApiKey: process.env.RESEND_API_KEY ?? "",
-  resendFrom: process.env.RESEND_FROM ?? "Obscura <onboarding@resend.dev>",
+  resendFrom: process.env.RESEND_FROM ?? "Obscura <receipts@notifications.obscuraonsol.com>",
 };
