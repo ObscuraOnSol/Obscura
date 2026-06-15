@@ -17,7 +17,8 @@ export const ordersRouter = Router();
 ordersRouter.get(
   "/orders/metrics",
   asyncHandler(async (_req, res) => {
-    const { rows } = await query<{
+    // 1. Get 24h orders statistics
+    const ordersRes = await query<{
       gpu_type: string;
       total: string;
       revealed: string;
@@ -30,21 +31,69 @@ ordersRouter.get(
       FROM orders
       WHERE ts > now() - interval '24 hours'
       GROUP BY gpu_type
-      ORDER BY gpu_type
     `);
+
+    // 2. Get active capacity/depth statistics
+    const providersRes = await query<{
+      gpu_type: string;
+      depth: string;
+      cheapest_price: string;
+      total_providers: string;
+    }>(`
+      SELECT gpu_type,
+             COALESCE(SUM(capacity), 0)::text AS depth,
+             COALESCE(MIN(rate_micro), 0)::text AS cheapest_price,
+             COUNT(*)::text AS total_providers
+      FROM providers
+      WHERE status = 'active'
+      GROUP BY gpu_type
+    `);
+
+    // 3. Get latest clearing prices
+    const pricesRes = await query<{
+      gpu_type: string;
+      clearing_price: string;
+    }>(`
+      SELECT DISTINCT ON (gpu_type) gpu_type, clearing_price
+      FROM market_prices
+      ORDER BY gpu_type, ts DESC
+    `);
+
+    // Create a union of all GPU types present in the metrics, providers, or price logs
+    const gpus = new Set<string>();
+    ordersRes.rows.forEach((r) => gpus.add(r.gpu_type));
+    providersRes.rows.forEach((r) => gpus.add(r.gpu_type));
+    pricesRes.rows.forEach((r) => gpus.add(r.gpu_type));
+
+    const ordersMap = new Map(ordersRes.rows.map((r) => [r.gpu_type, r]));
+    const providersMap = new Map(providersRes.rows.map((r) => [r.gpu_type, r]));
+    const pricesMap = new Map(pricesRes.rows.map((r) => [r.gpu_type, r]));
+
+    const breakdown = Array.from(gpus).sort().map((gpu) => {
+      const o = ordersMap.get(gpu);
+      const p = providersMap.get(gpu);
+      const pr = pricesMap.get(gpu);
+
+      const total = o ? Number(o.total) : 0;
+      const settled = o ? Number(o.settled) : 0;
+      const revealed = o ? Number(o.revealed) : 0;
+
+      return {
+        gpuType: gpu,
+        total,
+        revealed,
+        settled,
+        fillRate: total > 0 ? settled / total : 0,
+        clearingPrice: pr ? Number(pr.clearing_price) : null,
+        depth: p ? Number(p.depth) : 0,
+        cheapestPrice: p ? Number(p.cheapest_price) / 1_000_000 : null,
+        totalProviders: p ? Number(p.total_providers) : 0,
+      };
+    });
+
     res.json({
       window: "24h",
-      breakdown: rows.map((r) => {
-        const total = Number(r.total);
-        const settled = Number(r.settled);
-        return {
-          gpuType: r.gpu_type,
-          total,
-          revealed: Number(r.revealed),
-          settled,
-          fillRate: total > 0 ? settled / total : 0,
-        };
-      }),
+      breakdown,
     });
   }),
 );
