@@ -8,7 +8,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { useWallet as useAdapterWallet } from "@solana/wallet-adapter-react";
+import { useWallet } from "@/lib/wallet";
 import bs58 from "bs58";
 
 import { authApi, setAuthToken } from "@/lib/api";
@@ -31,7 +31,7 @@ const Ctx = createContext<SessionState>({
 export const useSession = () => useContext(Ctx);
 
 export function SessionProvider({ children }: { children: ReactNode }) {
-  const { publicKey, signMessage, disconnect } = useAdapterWallet();
+  const { publicKey, signMessage, disconnect } = useWallet();
   const [token, setToken] = useState<string | null>(null);
   const [signingIn, setSigningIn] = useState(false);
 

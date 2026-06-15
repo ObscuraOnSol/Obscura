@@ -102,7 +102,7 @@ function loadReveal(id: string): RevealData | null {
 }
 
 export function OrderFlow() {
-  const { wallet, connect, sendTransaction, publicKey } = useWallet();
+  const { wallet, connect, sendTransaction, publicKey, isPaperModeActive } = useWallet();
   const { connection } = useConnection();
   const { signedIn, signIn } = useSession();
   const [orders, setOrders] = useState<SessionOrder[]>([]);
@@ -315,7 +315,7 @@ export function OrderFlow() {
   }
 
   async function handlePayAndSettle(order: SessionOrder) {
-    if (!wallet || !publicKey || !sendTransaction) return;
+    if (!wallet || !publicKey) return;
     if (!order.assignedProviderWallet || !order.clearingPrice || !order.hours) {
       setError("Order matching details are missing.");
       return;
@@ -324,15 +324,27 @@ export function OrderFlow() {
     setError(null);
     setBusy(true);
     try {
-      // 1. Request serialized transaction from backend
-      const { serializedTx } = await ordersApi.buildSettleTx(order.id, publicKey.toBase58());
+      let txSig: string;
 
-      // 2. Sign and send transaction
-      const txSig = await signAndSendSerializedTransaction(
-        connection,
-        serializedTx,
-        sendTransaction
-      );
+      if (isPaperModeActive) {
+        // Paper trading: skip real Solana TX entirely — backend will bypass USDC verification
+        // Use a valid Base58 dummy signature (all chars from the Base58 alphabet)
+        txSig = "PaperTradeSim1111111111111111111111111111111111111111111111111111111";
+      } else {
+        if (!sendTransaction) {
+          setError("Wallet does not support sending transactions.");
+          return;
+        }
+        // 1. Request serialized transaction from backend
+        const { serializedTx } = await ordersApi.buildSettleTx(order.id, publicKey.toBase58());
+
+        // 2. Sign and send transaction
+        txSig = await signAndSendSerializedTransaction(
+          connection,
+          serializedTx,
+          sendTransaction
+        );
+      }
 
       // 3. Confirm settlement on backend
       await ordersApi.settle(order.id, wallet, txSig);
