@@ -76,6 +76,9 @@ export interface ProviderRow {
   successfulPings: number;
   failedPings: number;
   status: string;
+  reputation: number;
+  fillRate: number;
+  uptime: number;
 }
 export interface MarketStats {
   window: string;

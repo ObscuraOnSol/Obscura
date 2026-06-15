@@ -135,27 +135,51 @@ providersRouter.get(
       successful_pings: number;
       failed_pings: number;
       status: string;
+      total_orders: string;
+      settled_orders: string;
     }>(
-      `SELECT id, wallet, gpu_type, capacity, stake_amount, rate_micro, successful_pings, failed_pings, status
-       FROM providers
-       WHERE status = 'active'
-         AND ($1::text IS NULL OR gpu_type = $1)
-         AND network = $2
-       ORDER BY rate_micro ASC, updated_at DESC`,
+      `SELECT p.id, p.wallet, p.gpu_type, p.capacity, p.stake_amount, p.rate_micro, p.successful_pings, p.failed_pings, p.status,
+              COALESCE(o.total_orders, 0) AS total_orders,
+              COALESCE(o.settled_orders, 0) AS settled_orders
+       FROM providers p
+       LEFT JOIN (
+         SELECT assigned_provider_wallet,
+                COUNT(*) AS total_orders,
+                COUNT(*) FILTER (WHERE status = 'settled') AS settled_orders
+         FROM orders
+         GROUP BY assigned_provider_wallet
+       ) o ON p.wallet = o.assigned_provider_wallet
+       WHERE p.status = 'active'
+         AND ($1::text IS NULL OR p.gpu_type = $1)
+         AND p.network = $2
+       ORDER BY p.rate_micro ASC, p.updated_at DESC`,
       [gpuType, env.network],
     );
     res.json({
-      providers: rows.map((r) => ({
-        id: r.id,
-        wallet: r.wallet,
-        gpuType: r.gpu_type,
-        capacity: r.capacity,
-        stakeAmount: Number(r.stake_amount),
-        rateMicro: Number(r.rate_micro),
-        successfulPings: r.successful_pings,
-        failedPings: r.failed_pings,
-        status: r.status,
-      })),
+      providers: rows.map((r) => {
+        const totalPings = r.successful_pings + r.failed_pings;
+        const uptime = totalPings > 0 ? (r.successful_pings / totalPings) * 100 : 100;
+        
+        const totalOrders = Number(r.total_orders);
+        const settledOrders = Number(r.settled_orders);
+        const fillRate = totalOrders > 0 ? (settledOrders / totalOrders) * 100 : 100;
+        const reputation = Math.round((uptime * 0.4) + (fillRate * 0.6));
+
+        return {
+          id: r.id,
+          wallet: r.wallet,
+          gpuType: r.gpu_type,
+          capacity: r.capacity,
+          stakeAmount: Number(r.stake_amount),
+          rateMicro: Number(r.rate_micro),
+          successfulPings: r.successful_pings,
+          failedPings: r.failed_pings,
+          status: r.status,
+          uptime,
+          fillRate,
+          reputation,
+        };
+      }),
     });
   }),
 );
