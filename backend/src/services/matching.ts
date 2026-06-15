@@ -2,6 +2,7 @@ import { pool, query } from "../db/index.ts";
 import { env } from "../lib/env.ts";
 import { broadcast } from "./websocket.ts";
 import { checkPriceAlerts } from "./alerts.ts";
+import { sendOrderFillReceipt, type FillReceipt } from "./notify.ts";
 
 /**
  * Obscura matching engine — a scheduled uniform-price batch auction.
@@ -101,6 +102,7 @@ export async function runBatch(): Promise<BatchResult> {
     await client.query("BEGIN");
     let totalFills = 0;
     const result: BatchResult["byGpu"] = [];
+    const fillReceipts: FillReceipt[] = []; // sent after commit (#10)
 
     for (const [key, list] of byGpuNet) {
       const [gpu, net] = key.split("_");
@@ -218,6 +220,13 @@ export async function runBatch(): Promise<BatchResult> {
               network: net,
               batchId,
             });
+            fillReceipts.push({
+              wallet: buyerWallet,
+              orderId,
+              gpuType: gpu,
+              clearingPrice,
+              hours: orderHours,
+            });
           }
         }
       }
@@ -231,6 +240,10 @@ export async function runBatch(): Promise<BatchResult> {
     }
 
     await client.query("COMMIT");
+
+    // Push fill receipts to opted-in channels (Telegram) — after commit so
+    // network calls never hold the transaction open. (#10)
+    for (const r of fillReceipts) void sendOrderFillReceipt(r);
 
     if (totalFills > 0) {
       console.log(

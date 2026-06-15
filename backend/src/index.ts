@@ -6,6 +6,7 @@ import { migrate } from "./db/migrate.ts";
 import { startMatchingEngine } from "./services/matching.ts";
 import { startHealthChecker } from "./services/health.ts";
 import { startEscrowManager } from "./services/escrow.ts";
+import { startTelegramPolling } from "./services/telegram.ts";
 
 import { initWebSocketServer } from "./services/websocket.ts";
 
@@ -32,6 +33,7 @@ async function main() {
     startMatchingEngine();
     startHealthChecker();
     startEscrowManager();
+    startTelegramPolling(); // no-op unless TELEGRAM_BOT_TOKEN is set
   }
 }
 

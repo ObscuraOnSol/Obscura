@@ -284,6 +284,23 @@ export const templatesApi = {
     }),
 };
 
+export const telegramApi = {
+  linkCode: (wallet: string) =>
+    call<{ code: string; botUsername: string; deepLink: string }>(
+      "/api/session/telegram/link-code",
+      { method: "POST", body: JSON.stringify({ wallet }) },
+    ),
+  status: (wallet: string) =>
+    call<{ linked: boolean; configured: boolean }>(
+      `/api/session/telegram/status?wallet=${encodeURIComponent(wallet)}`,
+    ),
+  unlink: (wallet: string) =>
+    call<{ unlinked: boolean }>("/api/session/telegram/unlink", {
+      method: "POST",
+      body: JSON.stringify({ wallet }),
+    }),
+};
+
 export interface NotificationPrefs {
   emailEnabled: boolean;
   emailAddress: string;

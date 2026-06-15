@@ -19,6 +19,7 @@ import { authRouter } from "./routes/auth.ts";
 import { alertsRouter } from "./routes/alerts.ts";
 import { notificationsRouter } from "./routes/notifications.ts";
 import { templatesRouter } from "./routes/templates.ts";
+import { telegramRouter } from "./routes/telegram.ts";
 import { leaderboardRouter } from "./routes/leaderboard.ts";
 import { swaggerHtml, swaggerSpec } from "./lib/swagger.ts";
 
@@ -85,6 +86,7 @@ export function createAppWithoutDocs() {
   app.use("/api", alertsRouter);
   app.use("/api", notificationsRouter);
   app.use("/api", templatesRouter);
+  app.use("/api", telegramRouter);
   app.use("/api", leaderboardRouter);
 
   app.use((_req, res) => {

@@ -21,4 +21,11 @@ export const env = {
   obscuraServiceWallet: process.env.OBSCURA_SERVICE_WALLET ?? "FHMr5nLShb3AxFmdqS2dEwdseKFvaic6vyFcCm3Hm6Jn",
   usdcMint: process.env.USDC_MINT ?? "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
   usdcMintDevnet: process.env.USDC_MINT_DEVNET ?? "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+  // Telegram fill receipts (#10). Inert unless a bot token is configured.
+  telegramBotToken: process.env.TELEGRAM_BOT_TOKEN ?? "",
+  // Optional — auto-detected from the token via getMe when blank.
+  telegramBotUsername: process.env.TELEGRAM_BOT_USERNAME ?? "",
+  // Email fill receipts via Resend (#10). Inert unless a key is configured.
+  resendApiKey: process.env.RESEND_API_KEY ?? "",
+  resendFrom: process.env.RESEND_FROM ?? "Obscura <receipts@notifications.obscuraonsol.com>",
 };
