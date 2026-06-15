@@ -1,6 +1,7 @@
 import { pool, query } from "../db/index.ts";
 import { env } from "../lib/env.ts";
 import { broadcast } from "./websocket.ts";
+import { checkPriceAlerts } from "./alerts.ts";
 
 /**
  * Obscura matching engine — a scheduled uniform-price batch auction.
@@ -129,6 +130,7 @@ export async function runBatch(): Promise<BatchResult> {
         `INSERT INTO market_prices (ts, gpu_type, clearing_price, network) VALUES (now(), $1, $2, $3)`,
         [gpu, clearingPrice, net],
       );
+      await checkPriceAlerts(gpu, clearingPrice, net, client);
       for (const orderId of filled) {
         // Find an active provider for this GPU type & network that has capacity > 0
         const { rows: matchedProviders } = await client.query<{
