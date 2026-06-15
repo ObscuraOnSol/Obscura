@@ -4,6 +4,7 @@
   <p><strong>Compute in the dark.</strong></p>
   <p>A dark pool for AI/GPU compute on Solana: encrypted order books, commit-reveal submission, ZK-matched batch auctions, USDC settlement.</p>
   <p><strong>Token CA:</strong> <code>63pWiBNCEW4RkYTDBG9dcabzdiHdVZMHnauKGhcWpump</code></p>
+  <p><a href="https://dexscreener.com/solana/63pWiBNCEW4RkYTDBG9dcabzdiHdVZMHnauKGhcWpump" target="_blank"><strong>View on DEXScreener</strong></a></p>
 </div>
 
 ![backend CI](https://github.com/ObscuraOnSol/Obscura/actions/workflows/backend.yml/badge.svg)
