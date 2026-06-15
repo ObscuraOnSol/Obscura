@@ -20,6 +20,9 @@ export const API_BASE = (() => {
   return url;
 })();
 
+export const WS_BASE = API_BASE.replace(/^http/i, "ws") + "/ws";
+
+
 
 export interface SessionOrder {
   id: string;

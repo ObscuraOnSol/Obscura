@@ -1,5 +1,6 @@
 import { pool, query } from "../db/index.ts";
 import { env } from "../lib/env.ts";
+import { broadcast } from "./websocket.ts";
 
 /**
  * Obscura matching engine — a scheduled uniform-price batch auction.
@@ -175,10 +176,79 @@ export async function runBatch(): Promise<BatchResult> {
     }
 
     await client.query("COMMIT");
+
     if (totalFills > 0) {
       console.log(
         `[matching] batch #${batchId}: ${totalFills} fills across ${result.length} GPU type(s)`,
       );
+
+      // Fetch the updated 24h stats and order metrics to broadcast
+      try {
+        const statsRes = await client.query<{
+          gpu_types: string;
+          total_fills: string;
+          avg_price: string | null;
+        }>(`
+          SELECT
+            COUNT(DISTINCT gpu_type)::text AS gpu_types,
+            COALESCE(SUM(fill_count), 0)::text AS total_fills,
+            AVG(clearing_price)::text AS avg_price
+          FROM settlements
+          WHERE ts > now() - interval '24 hours'
+        `);
+
+        const metricsRes = await client.query<{
+          gpu_type: string;
+          total: string;
+          revealed: string;
+          settled: string;
+        }>(`
+          SELECT gpu_type,
+                 COUNT(*)::text AS total,
+                 COUNT(*) FILTER (WHERE revealed)::text AS revealed,
+                 COUNT(*) FILTER (WHERE status = 'settled')::text AS settled
+          FROM orders
+          WHERE ts > now() - interval '24 hours'
+          GROUP BY gpu_type
+          ORDER BY gpu_type
+        `);
+
+        const s = statsRes.rows[0];
+        const stats = {
+          window: "24h",
+          gpuTypes: Number(s?.gpu_types ?? 0),
+          totalFills: Number(s?.total_fills ?? 0),
+          avgClearingPrice: s?.avg_price ? Number(s.avg_price) : null,
+        };
+
+        const breakdown = metricsRes.rows.map((r) => {
+          const total = Number(r.total);
+          const settled = Number(r.settled);
+          return {
+            gpuType: r.gpu_type,
+            total,
+            revealed: Number(r.revealed),
+            settled,
+            fillRate: total > 0 ? settled / total : 0,
+          };
+        });
+
+        const newSettlements = result.map((r) => ({
+          batchId,
+          gpuType: r.gpuType,
+          clearingPrice: r.clearingPrice,
+          fillCount: r.fills,
+          ts: new Date(),
+        }));
+
+        broadcast("settlement", {
+          settlements: newSettlements,
+          stats,
+          metrics: breakdown,
+        });
+      } catch (err) {
+        console.error("[matching] failed to broadcast settlement stats:", err);
+      }
     }
     return { batchId: totalFills > 0 ? batchId : null, totalFills, byGpu: result };
   } catch (err) {
@@ -189,3 +259,4 @@ export async function runBatch(): Promise<BatchResult> {
     running = false;
   }
 }
+
