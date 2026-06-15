@@ -25,6 +25,9 @@ import {
   Clock,
   ArrowUpRight,
   Receipt,
+  Bookmark,
+  Plus,
+  Trash2,
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useConnection } from "@solana/wallet-adapter-react";
@@ -36,7 +39,7 @@ import { PhaseBadge } from "@/components/ui/badge";
 import { FadeIn, StaggerContainer, StaggerItem } from "@/components/motion";
 import { useWallet } from "@/lib/wallet";
 import { useSession } from "@/lib/session";
-import { ordersApi, marketApi, type SessionOrder, type ProviderRow } from "@/lib/api";
+import { ordersApi, marketApi, templatesApi, type SessionOrder, type ProviderRow, type OrderTemplate } from "@/lib/api";
 import { computeCommitHash, randomSecretHex, usdToMicro } from "@/lib/commit";
 import { cn, fmtUsdHr, shortHash } from "@/lib/utils";
 import { performUsdcTransfer, performUsdcSplitTransfer, signAndSendSerializedTransaction } from "@/lib/solana";
@@ -143,6 +146,8 @@ export function OrderFlow() {
   const [secret, setSecret] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [templates, setTemplates] = useState<OrderTemplate[]>([]);
+  const [savingTemplate, setSavingTemplate] = useState(false);
   const [modalOrder, setModalOrder] = useState<SessionOrder | null>(null);
   const [connectOrder, setConnectOrder] = useState<SessionOrder | null>(null);
   const [connectionDetails, setConnectionDetails] = useState<{
@@ -191,6 +196,66 @@ export function OrderFlow() {
       setLoadingConnection(false);
     }
   };
+
+  // --- Order templates (#9): saved GPU/price/qty presets ---
+  const loadTemplates = useCallback(async (w: string) => {
+    try {
+      const { templates } = await templatesApi.list(w);
+      setTemplates(templates);
+    } catch {
+      /* non-fatal */
+    }
+  }, []);
+
+  useEffect(() => {
+    if (wallet) void loadTemplates(wallet);
+  }, [wallet, loadTemplates]);
+
+  function applyTemplate(t: OrderTemplate) {
+    if (gpuTypes.includes(t.gpuType)) setGpuType(t.gpuType);
+    setPrice((t.priceMicro / 1e6).toFixed(4));
+    setQty(String(t.qty));
+  }
+
+  async function saveTemplate() {
+    if (!wallet) {
+      connect();
+      return;
+    }
+    if (!(Number(price) > 0) || !(Number.isInteger(Number(qty)) && Number(qty) > 0)) {
+      setError("Enter a positive price and a whole-number quantity before saving a template");
+      return;
+    }
+    const name = window
+      .prompt("Name this template", `${gpuType} @ $${price}/hr`)
+      ?.trim();
+    if (!name) return;
+    setSavingTemplate(true);
+    try {
+      const t = await templatesApi.create(
+        wallet,
+        name,
+        gpuType,
+        Number(usdToMicro(Number(price))),
+        Number(qty),
+      );
+      setTemplates((prev) => [t, ...prev]);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to save template");
+    } finally {
+      setSavingTemplate(false);
+    }
+  }
+
+  async function deleteTemplate(id: string) {
+    if (!wallet) return;
+    setTemplates((prev) => prev.filter((t) => t.id !== id));
+    try {
+      await templatesApi.delete(id, wallet);
+    } catch {
+      if (wallet) void loadTemplates(wallet);
+    }
+  }
 
   useEffect(() => setSecret(randomSecretHex()), []);
 
@@ -395,6 +460,58 @@ export function OrderFlow() {
               </div>
             ) : (
               <div className="space-y-4">
+                {/* Saved templates (#9) */}
+                <div className="space-y-2 border-b border-border/40 pb-4">
+                  <div className="flex items-center justify-between">
+                    <Label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                      <Bookmark className="h-3.5 w-3.5 text-primary" /> Templates
+                    </Label>
+                    <button
+                      type="button"
+                      onClick={saveTemplate}
+                      disabled={savingTemplate}
+                      className="inline-flex items-center gap-1 text-[11px] font-medium text-primary transition-opacity hover:opacity-80 disabled:opacity-50"
+                    >
+                      <Plus className="h-3 w-3" /> Save current
+                    </button>
+                  </div>
+                  {templates.length === 0 ? (
+                    <p className="text-[11px] text-muted-foreground/60">
+                      No saved presets yet — set a GPU, price and quantity, then hit
+                      &ldquo;Save current&rdquo;.
+                    </p>
+                  ) : (
+                    <div className="flex flex-wrap gap-2">
+                      {templates.map((t) => (
+                        <div
+                          key={t.id}
+                          className="group inline-flex items-center gap-1.5 rounded-full border border-border bg-background/50 py-1 pl-3 pr-1.5 text-xs transition-colors hover:border-primary/40"
+                        >
+                          <button
+                            type="button"
+                            onClick={() => applyTemplate(t)}
+                            className="flex items-center gap-1.5"
+                            title="Apply template"
+                          >
+                            <span className="font-medium text-foreground">{t.name}</span>
+                            <span className="data text-[10px] text-muted-foreground">
+                              {t.gpuType} · {fmtUsdHr(t.priceMicro / 1e6)} · {t.qty}x
+                            </span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => deleteTemplate(t.id)}
+                            aria-label="Delete template"
+                            className="rounded-full p-0.5 text-muted-foreground/50 transition-colors hover:bg-white/5 hover:text-destructive"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
                 <div className="space-y-1.5">
                   <Label htmlFor="gpu" className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
                     <Cpu className="h-3.5 w-3.5 text-primary" /> GPU type

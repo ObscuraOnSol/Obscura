@@ -252,6 +252,38 @@ export const alertsApi = {
     }),
 };
 
+export interface OrderTemplate {
+  id: string;
+  name: string;
+  gpuType: string;
+  priceMicro: number;
+  qty: number;
+  createdAt: string;
+}
+
+export const templatesApi = {
+  create: (
+    wallet: string,
+    name: string,
+    gpuType: string,
+    priceMicro: number,
+    qty: number,
+  ) =>
+    call<OrderTemplate>("/api/session/order-templates", {
+      method: "POST",
+      body: JSON.stringify({ wallet, name, gpuType, priceMicro, qty }),
+    }),
+  list: (wallet: string) =>
+    call<{ templates: OrderTemplate[] }>(
+      `/api/session/order-templates?wallet=${encodeURIComponent(wallet)}`,
+    ),
+  delete: (id: string, wallet: string) =>
+    call<{ id: string; deleted: boolean }>(`/api/session/order-templates/${id}`, {
+      method: "DELETE",
+      body: JSON.stringify({ wallet }),
+    }),
+};
+
 export interface NotificationPrefs {
   emailEnabled: boolean;
   emailAddress: string;
