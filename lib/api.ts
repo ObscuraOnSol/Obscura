@@ -163,7 +163,23 @@ export const ordersApi = {
       password?: string;
       webCliUrl: string;
     }>(`/api/session/orders/${id}/connection`),
+
+  receipt: (id: string, wallet: string) =>
+    call<OrderReceipt>(
+      `/api/session/orders/${id}/receipt?wallet=${encodeURIComponent(wallet)}`
+    ),
 };
+
+export interface OrderReceipt {
+  orderId: string;
+  batchId: number;
+  gpuType: string;
+  clearingPrice: number;
+  hours: number;
+  totalCost: number;
+  timestamp: string;
+  status: string;
+}
 
 export interface AgentStats {
   reputation: number;

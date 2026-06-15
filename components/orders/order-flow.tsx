@@ -23,6 +23,7 @@ import {
   Cpu,
   Clock,
   ArrowUpRight,
+  Receipt,
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useConnection } from "@solana/wallet-adapter-react";
@@ -151,6 +152,25 @@ export function OrderFlow() {
     webCliUrl: string;
   } | null>(null);
   const [loadingConnection, setLoadingConnection] = useState(false);
+
+  const [receiptOrder, setReceiptOrder] = useState<SessionOrder | null>(null);
+  const [receiptDetails, setReceiptDetails] = useState<any | null>(null);
+  const [loadingReceipt, setLoadingReceipt] = useState(false);
+
+  const handleOpenReceipt = async (o: SessionOrder) => {
+    setReceiptOrder(o);
+    setLoadingReceipt(true);
+    setReceiptDetails(null);
+    try {
+      if (!wallet) return;
+      const details = await ordersApi.receipt(o.id, wallet);
+      setReceiptDetails(details);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load receipt details");
+    } finally {
+      setLoadingReceipt(false);
+    }
+  };
 
   const handleOpenConnect = async (o: SessionOrder) => {
     setConnectOrder(o);
@@ -519,6 +539,7 @@ export function OrderFlow() {
                   onOpenDetails={() => setModalOrder(o)}
                   onConnect={() => handleOpenConnect(o)}
                   onPayAndSettle={() => handlePayAndSettle(o)}
+                  onReceipt={() => handleOpenReceipt(o)}
                 />
               </StaggerItem>
             ))}
@@ -810,6 +831,187 @@ export function OrderFlow() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Modal for Order Receipt */}
+      <AnimatePresence>
+        {receiptOrder && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-sm p-4 font-sans">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              transition={{ duration: 0.15, ease: "easeOut" }}
+              className="w-full max-w-md overflow-hidden rounded-2xl border border-border bg-card/90 p-6 shadow-2xl backdrop-blur-md relative"
+            >
+              {/* Modal Header */}
+              <div className="flex items-start justify-between border-b border-border/60 pb-3">
+                <div>
+                  <h3 className="text-base font-semibold text-foreground flex items-center gap-2">
+                    <Receipt className="h-4.5 w-4.5 text-primary" /> Lease Transaction Receipt
+                  </h3>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    Official proof of GPU lease match & billing.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setReceiptOrder(null)}
+                  className="rounded-lg p-1 text-muted-foreground hover:bg-white/5 hover:text-foreground transition-colors"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              {/* Receipt Body */}
+              <div className="mt-5 space-y-4">
+                {loadingReceipt ? (
+                  <div className="flex flex-col items-center justify-center py-12 space-y-4">
+                    <Loader2 className="animate-spin h-7 w-7 text-primary" />
+                    <p className="text-xs text-muted-foreground">Generating cryptographically-signed receipt...</p>
+                  </div>
+                ) : receiptDetails ? (
+                  <>
+                    {/* The receipt ticket design */}
+                    <div className="border border-border/60 bg-background/50 rounded-xl p-5 relative overflow-hidden font-sans">
+                      {/* Top circular cuts for ticket aesthetic */}
+                      <div className="absolute top-0 left-0 right-0 flex justify-between px-6 -translate-y-1/2">
+                        <div className="h-3 w-3 rounded-full bg-card/90 border-b border-border/60" />
+                        <div className="h-3 w-3 rounded-full bg-card/90 border-b border-border/60" />
+                      </div>
+
+                      {/* Header */}
+                      <div className="text-center pb-4 border-b border-dashed border-border/80">
+                        <div className="data text-[10px] uppercase tracking-[0.2em] text-primary font-bold">
+                          Obscura Dark Pool
+                        </div>
+                        <div className="data text-xs text-muted-foreground mt-0.5 font-mono">
+                          Batch ID: #{receiptDetails.batchId}
+                        </div>
+                        <div className="mt-2.5">
+                          <span className={cn(
+                            "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider",
+                            receiptDetails.status === "settled" 
+                              ? "bg-primary/10 text-primary ring-1 ring-primary/30" 
+                              : "bg-amber-500/10 text-amber-500 ring-1 ring-amber-500/30"
+                          )}>
+                            ● {receiptDetails.status}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Cost Details table */}
+                      <div className="py-4 space-y-2.5 text-xs">
+                        <div className="flex justify-between items-center text-[10px] uppercase tracking-wider text-muted-foreground">
+                          <span>Description</span>
+                          <span>Amount</span>
+                        </div>
+
+                        <div className="flex justify-between items-start pt-1.5 border-t border-border/30">
+                          <div>
+                            <div className="font-semibold text-foreground">{receiptDetails.gpuType}</div>
+                            <div className="text-[10px] text-muted-foreground mt-0.5">
+                              Lease duration: {receiptDetails.hours} {receiptDetails.hours === 1 ? "hour" : "hours"}
+                            </div>
+                            <div className="text-[10px] text-muted-foreground">
+                              Rate: {fmtUsdHr(receiptDetails.clearingPrice)}/hr
+                            </div>
+                          </div>
+                          <span className="font-mono text-foreground font-medium">
+                            {receiptDetails.totalCost.toFixed(4)} USDC
+                          </span>
+                        </div>
+
+                        <div className="flex justify-between items-center text-[11px]">
+                          <span className="text-muted-foreground">Protocol Fee (0.5%):</span>
+                          <span className="font-mono text-muted-foreground">
+                            {(receiptDetails.totalCost * 0.005).toFixed(4)} USDC
+                          </span>
+                        </div>
+
+                        <div className="flex justify-between items-center pt-3 border-t border-dashed border-border/80 font-bold text-foreground">
+                          <span className="text-primary">Total Billable:</span>
+                          <span className="font-mono text-primary flex items-center gap-1.5 text-sm">
+                            <img src="/usdc_logo.png" alt="USDC" className="h-4 w-4 object-contain rounded-full" />
+                            {(receiptDetails.totalCost * 1.005).toFixed(4)} USDC
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Ticket metadata footer */}
+                      <div className="pt-4 border-t border-border/30 text-[10px] space-y-2 text-muted-foreground font-mono">
+                        <div className="flex justify-between">
+                          <span>RECEIPT ID:</span>
+                          <span className="text-foreground text-right max-w-[180px] truncate">{receiptDetails.orderId}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>COMPLETED:</span>
+                          <span className="text-foreground">{new Date(receiptDetails.timestamp).toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>NETWORK:</span>
+                          <span className="text-foreground uppercase">{receiptDetails.status === "settled" ? "Mainnet" : "Pending Settlement"}</span>
+                        </div>
+                      </div>
+
+                      {/* Bottom decorative cut */}
+                      <div className="absolute bottom-0 left-0 right-0 flex justify-between px-6 translate-y-1/2">
+                        <div className="h-3 w-3 rounded-full bg-card/90 border-t border-border/60" />
+                        <div className="h-3 w-3 rounded-full bg-card/90 border-t border-border/60" />
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 mt-4">
+                      <Button
+                        size="sm"
+                        className="flex-1"
+                        onClick={() => {
+                          const text = `
+=============================================
+           OBSCURA COMPUTE NETWORK           
+             TRANSACTION RECEIPT             
+=============================================
+Date: ${new Date(receiptDetails.timestamp).toLocaleString()}
+Receipt ID: ${receiptDetails.orderId}
+Batch ID: #${receiptDetails.batchId}
+Status: ${receiptDetails.status.toUpperCase()}
+---------------------------------------------
+GPU Model:     ${receiptDetails.gpuType}
+Rent Duration: ${receiptDetails.hours} hour(s)
+Hourly Price:  $${receiptDetails.clearingPrice.toFixed(4)} USDC/hr
+---------------------------------------------
+Lease cost:    $${receiptDetails.totalCost.toFixed(4)} USDC
+Protocol Fee:  $${(receiptDetails.totalCost * 0.005).toFixed(4)} USDC
+Total Paid:    $${(receiptDetails.totalCost * 1.005).toFixed(4)} USDC
+=============================================
+      ZK-MATCHED & CRYPTOGRAPHICALLY SECURED
+=============================================
+                          `;
+                          const blob = new Blob([text.trim()], { type: "text/plain" });
+                          const url = URL.createObjectURL(blob);
+                          const link = document.createElement("a");
+                          link.href = url;
+                          link.download = `obscura-receipt-${receiptDetails.orderId.slice(0, 8)}.txt`;
+                          link.click();
+                          URL.revokeObjectURL(url);
+                        }}
+                      >
+                        <Copy className="h-3.5 w-3.5 mr-1" /> Download Receipt
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => setReceiptOrder(null)}>
+                        Close
+                      </Button>
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-center py-6 text-destructive flex flex-col items-center justify-center gap-2 font-sans">
+                    <AlertTriangle className="h-7 w-7" />
+                    <p className="text-xs">Failed to load transaction receipt details.</p>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -822,6 +1024,7 @@ function OrderRow({
   onOpenDetails,
   onConnect,
   onPayAndSettle,
+  onReceipt,
 }: {
   order: SessionOrder;
   busy: boolean;
@@ -830,6 +1033,7 @@ function OrderRow({
   onOpenDetails: () => void;
   onConnect: () => void;
   onPayAndSettle: () => void;
+  onReceipt: () => void;
 }) {
   const activeIdx = PHASES.indexOf(order.status as (typeof PHASES)[number]);
   const cancelled = order.status === "cancelled";
@@ -951,6 +1155,12 @@ function OrderRow({
         {order.status === "settled" && (
           <Button size="sm" variant="white" onClick={onConnect} disabled={isExpired}>
             <Terminal className="h-3.5 w-3.5 mr-1.5" /> Connect
+          </Button>
+        )}
+
+        {(order.status === "matched" || order.status === "settled") && (
+          <Button size="sm" variant="ghost" onClick={onReceipt}>
+            <Receipt className="h-3.5 w-3.5 mr-1.5 text-primary" /> Receipt
           </Button>
         )}
 
