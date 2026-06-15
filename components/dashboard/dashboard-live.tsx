@@ -9,6 +9,7 @@ import { PhaseBadge } from "@/components/ui/badge";
 import { DataError } from "@/components/marketplace/marketplace-live";
 import {
   marketApi,
+  WS_BASE,
   type MarketStats,
   type Settlement,
   type OrderMetric,
@@ -22,6 +23,7 @@ export function DashboardLive() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    // Initial fetch to load page state immediately
     Promise.all([
       marketApi.stats(),
       marketApi.settlements(8),
@@ -35,7 +37,93 @@ export function DashboardLive() {
       .catch((e) =>
         setError(e instanceof Error ? e.message : "failed to load dashboard"),
       );
+
+    let pollingInterval: ReturnType<typeof setInterval> | null = null;
+    let socket: WebSocket | null = null;
+
+    const startPolling = () => {
+      if (pollingInterval) return;
+      console.log("[ws/polling] starting fallback polling");
+      pollingInterval = setInterval(() => {
+        Promise.all([
+          marketApi.stats(),
+          marketApi.settlements(8),
+          marketApi.orderMetrics(),
+        ])
+          .then(([s, set, m]) => {
+            setStats(s);
+            setSettlements(set.settlements);
+            setMetrics(m.breakdown);
+          })
+          .catch((e) => console.error("[polling] fallback fetch failed:", e));
+      }, 5000); // Poll every 5s
+    };
+
+    const stopPolling = () => {
+      if (pollingInterval) {
+        console.log("[ws/polling] stopping fallback polling");
+        clearInterval(pollingInterval);
+        pollingInterval = null;
+      }
+    };
+
+    const connectWebSocket = () => {
+      try {
+        socket = new WebSocket(WS_BASE);
+
+        socket.onopen = () => {
+          console.log("[ws] connected to dashboard stream");
+          stopPolling();
+        };
+
+        socket.onmessage = (event) => {
+          try {
+            const msg = JSON.parse(event.data);
+            if (msg.type === "settlement") {
+              console.log("[ws] received live settlement update", msg.data);
+              const { settlements: newSettle, stats: newStats, metrics: newMetrics } = msg.data;
+              
+              if (newStats) setStats(newStats);
+              if (newMetrics) setMetrics(newMetrics);
+              if (newSettle && newSettle.length > 0) {
+                setSettlements((prev) => {
+                  if (!prev) return newSettle;
+                  const combined = [...newSettle, ...prev];
+                  return combined.slice(0, 8);
+                });
+              }
+            }
+          } catch (err) {
+            console.error("[ws] failed to parse message:", err);
+          }
+        };
+
+        socket.onerror = (err) => {
+          console.error("[ws] error, falling back to polling:", err);
+          startPolling();
+        };
+
+        socket.onclose = () => {
+          console.log("[ws] disconnected, falling back to polling");
+          startPolling();
+        };
+      } catch (err) {
+        console.error("[ws] failed to create WebSocket, falling back to polling:", err);
+        startPolling();
+      }
+    };
+
+    connectWebSocket();
+
+    return () => {
+      if (socket) {
+        socket.close();
+      }
+      stopPolling();
+    };
   }, []);
+
+
 
   if (error) return <DataError message={error} />;
   if (!stats || !settlements || !metrics) return <Skeleton />;

@@ -7,6 +7,8 @@ import { startMatchingEngine } from "./services/matching.ts";
 import { startHealthChecker } from "./services/health.ts";
 import { startEscrowManager } from "./services/escrow.ts";
 
+import { initWebSocketServer } from "./services/websocket.ts";
+
 async function main() {
   if (env.databaseUrl) {
     await migrate();
@@ -16,11 +18,14 @@ async function main() {
     );
   }
 
-  app.listen(env.port, () => {
+  const server = app.listen(env.port, () => {
     console.log(
       `[startup] Obscura backend listening on :${env.port} (${env.nodeEnv}) — batch interval ${env.matchingIntervalSeconds}s`,
     );
   });
+
+  initWebSocketServer(server);
+
 
   // Start background engines
   if (env.databaseUrl) {

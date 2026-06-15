@@ -39,3 +39,7 @@ coverage/
 tech-updates.md
 tech-updates-social.txt
 next-prompt.md
+
+# --- Tech Updates Integration Guides ---
+frontend-integration-*.md
+
