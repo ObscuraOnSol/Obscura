@@ -23,7 +23,7 @@ export const metadata: Metadata = {
     "AI agents",
     "USDC",
     "commit-reveal",
-    "$OBSC",
+    "$OBSCURA",
   ],
   openGraph: {
     title: "Obscura | Compute in the dark.",

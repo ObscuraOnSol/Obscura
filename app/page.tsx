@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import {
   ArrowRight,
+  ArrowUpRight,
   Lock,
   Unlock,
   Boxes,
@@ -167,15 +168,36 @@ interface ComingSoonProps {
 }
 
 function Hero({ isComingSoon, onLinkClick }: ComingSoonProps) {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = () => {
+    navigator.clipboard.writeText("63pWiBNCEW4RkYTDBG9dcabzdiHdVZMHnauKGhcWpump");
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   return (
     <section className="relative overflow-hidden">
       <div className="container relative flex flex-col items-center pb-24 pt-28 text-center md:pt-36">
         <HeroStagger className="flex flex-col items-center">
           <HeroItem>
-            <span className="inline-flex items-center gap-1.5 rounded border border-primary/30 bg-primary/5 px-3.5 py-1 text-xs font-mono text-primary mb-6 animate-pulse">
-              <span className="h-1.5 w-1.5 rounded bg-primary animate-pulse" />
-              CA: Coming Soon
-            </span>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-6">
+              <div 
+                onClick={handleCopy}
+                className="cursor-pointer inline-flex items-center gap-1.5 rounded border border-primary/30 bg-primary/5 px-3.5 py-1 text-xs font-mono text-primary transition-colors hover:bg-primary/10 select-none"
+                title="Click to copy CA"
+              >
+                <span className="h-1.5 w-1.5 rounded bg-primary" />
+                {copied ? "Copied!" : "CA: 63pWiBNCEW4RkYTDBG9dcabzdiHdVZMHnauKGhcWpump"}
+              </div>
+              <a 
+                href="https://dexscreener.com/solana/63pWiBNCEW4RkYTDBG9dcabzdiHdVZMHnauKGhcWpump" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-xs font-mono text-muted-foreground hover:text-primary transition-colors"
+              >
+                view on DEXScreener <ArrowUpRight className="h-3 w-3" />
+              </a>
+            </div>
           </HeroItem>
 
           <HeroItem>
@@ -463,9 +485,9 @@ function Features() {
 function Flywheel() {
   const steps = [
     { text: "Protocol earns fees", icon: Coins },
-    { text: "Buys back & burns $OBSC", icon: Flame },
+    { text: "Buys back & burns $OBSCURA", icon: Flame },
     { text: "Pays USDC yield to stakers", icon: TrendingUp },
-    { text: "Node operators lock $OBSC", icon: ShieldCheck },
+    { text: "Node operators lock $OBSCURA", icon: ShieldCheck },
     { text: "Agents auto-buy for API access", icon: Bot },
     { text: "More compute → more fees", icon: Zap },
   ];
@@ -475,9 +497,9 @@ function Flywheel() {
         <div className="overflow-hidden rounded-2xl border border-border bg-card/40">
           <div className="grid-hairlines p-8 md:p-12">
             <SectionHeading
-              eyebrow="$OBSC token"
+              eyebrow="$OBSCURA token"
               title="A flywheel, not a faucet"
-              sub="20% of protocol fees buy back and burn $OBSC. Stakers earn real USDC yield. Node operators stake as collateral, slashable for dishonesty."
+              sub="20% of protocol fees buy back and burn $OBSCURA. Stakers earn real USDC yield. Node operators stake as collateral, slashable for dishonesty."
               align="left"
             />
             <StaggerContainer className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-3" staggerDelay={0.06}>
@@ -550,6 +572,13 @@ function CTA({ isComingSoon, onLinkClick }: ComingSoonProps) {
 /* ---------- Footer ---------- */
 
 function SiteFooter({ isComingSoon, onLinkClick }: ComingSoonProps) {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = () => {
+    navigator.clipboard.writeText("63pWiBNCEW4RkYTDBG9dcabzdiHdVZMHnauKGhcWpump");
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   return (
     <footer className="relative overflow-hidden border-t border-border">
       {/* Giant OBSCURA background text */}
@@ -655,10 +684,24 @@ function SiteFooter({ isComingSoon, onLinkClick }: ComingSoonProps) {
             <p className="data text-xs text-muted-foreground/50">
               © {new Date().getFullYear()} Obscura. Compute in the dark.
             </p>
-            <span className="inline-flex items-center gap-1.5 rounded border border-primary/30 bg-primary/5 px-2.5 py-0.5 text-xs font-mono text-primary animate-pulse">
-              <span className="h-1.5 w-1.5 rounded bg-primary animate-pulse" />
-              CA: Coming Soon
-            </span>
+            <div className="flex flex-col sm:flex-row items-center gap-3">
+              <span 
+                onClick={handleCopy}
+                className="cursor-pointer inline-flex items-center gap-1.5 rounded border border-primary/30 bg-primary/5 px-2.5 py-0.5 text-xs font-mono text-primary transition-colors hover:bg-primary/10 select-none"
+                title="Click to copy CA"
+              >
+                <span className="h-1.5 w-1.5 rounded bg-primary" />
+                {copied ? "Copied!" : "CA: 63pWiBNC...Wpump"}
+              </span>
+              <a 
+                href="https://dexscreener.com/solana/63pWiBNCEW4RkYTDBG9dcabzdiHdVZMHnauKGhcWpump" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-xs font-mono text-muted-foreground hover:text-primary transition-colors"
+              >
+                view on DEXScreener <ArrowUpRight className="h-3 w-3" />
+              </a>
+            </div>
             <p className="data text-xs text-muted-foreground/40">
               Pseudonymous · No KYC · USDC-settled
             </p>

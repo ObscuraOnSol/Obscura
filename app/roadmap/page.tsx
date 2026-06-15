@@ -53,7 +53,7 @@ const ROADMAP_CONTENT = `# OBSCURA: 6-Month Protocol & Product Roadmap
 *   **Objective**: Launch token-gated programmatic access and sovereign identity for AI agents.
 *   **Key Deliverables**:
     - Release X-API-Key management portal.
-    - Integrate on-chain $OBSC balance checks for API rate-limit tier mapping.
+    - Integrate on-chain $OBSCURA balance checks for API rate-limit tier mapping.
     - Deploy SAS (Sovereign Agent Service) Passports providing granular spending limits and policies.
     - Launch reputation indexer calculating provider uptime and matching efficiency.
 
@@ -63,7 +63,7 @@ const ROADMAP_CONTENT = `# OBSCURA: 6-Month Protocol & Product Roadmap
 *   **Objective**: Transition to Mainnet and launch protocol fee redistribution.
 *   **Key Deliverables**:
     - Deploy final audited contracts to Solana Mainnet.
-    - Launch $OBSC staking portal with USDC yield claiming.
+    - Launch $OBSCURA staking portal with USDC yield claiming.
     - Deploy node operator collateral locks for capacity validation.
     - Bootstrap initial compute pools with institutional provider partners.
 `;
@@ -119,7 +119,7 @@ const MILESTONES = [
     description: "Launch token-gated programmatic access and sovereign identity for AI agents.",
     deliverables: [
       "Release X-API-Key management portal.",
-      "Integrate on-chain $OBSC balance checks for API rate-limit tier mapping.",
+      "Integrate on-chain $OBSCURA balance checks for API rate-limit tier mapping.",
       "Deploy SAS (Sovereign Agent Service) Passports providing granular spending limits and policies.",
       "Launch reputation indexer calculating provider uptime and matching efficiency."
     ]
@@ -130,7 +130,7 @@ const MILESTONES = [
     description: "Transition to Mainnet and launch protocol fee redistribution.",
     deliverables: [
       "Deploy final audited contracts to Solana Mainnet.",
-      "Launch $OBSC staking portal with USDC yield claiming.",
+      "Launch $OBSCURA staking portal with USDC yield claiming.",
       "Deploy node operator collateral locks for capacity validation.",
       "Bootstrap initial compute pools with institutional provider partners."
     ]

@@ -24,7 +24,7 @@ In traditional compute marketplaces, order details are public, exposing training
 
 ### 2.2 For Compute Providers
 1. Register: Register your hardware specs via the developer portal or the CLI.
-2. Stake Collateral: Lock up a minimum threshold of $OBSC tokens as collateral. This stake is slashable in the event of hardware failures or dishonest match reporting.
+2. Stake Collateral: Lock up a minimum threshold of $OBSCURA tokens as collateral. This stake is slashable in the event of hardware failures or dishonest match reporting.
 3. Host: Run the Obscura host daemon to accept containerized AI workloads matched by the pool.
 
 ---
@@ -247,7 +247,7 @@ export default function DocsPage() {
                       <strong className="text-foreground">Register:</strong> Register your hardware specs via the developer portal or the CLI.
                     </li>
                     <li>
-                      <strong className="text-foreground">Stake Collateral:</strong> Lock up a minimum threshold of $OBSC tokens as collateral. This stake is slashable in the event of hardware failures or dishonest match reporting.
+                      <strong className="text-foreground">Stake Collateral:</strong> Lock up a minimum threshold of $OBSCURA tokens as collateral. This stake is slashable in the event of hardware failures or dishonest match reporting.
                     </li>
                     <li>
                       <strong className="text-foreground">Host:</strong> Run the Obscura host daemon to accept containerized AI workloads matched by the pool.

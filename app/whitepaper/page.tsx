@@ -82,20 +82,20 @@ The Solana Verifier Program validates this proof in a single transaction. If the
 
 ---
 
-## 5. Tokenomics ($OBSC) & Sovereign Agent Service (SAS)
+## 5. Tokenomics ($OBSCURA) & Sovereign Agent Service (SAS)
 
 ### 5.1 Protocol Fee Dynamics & Deflationary Loops
 Obscura collects a 2.5% protocol fee on all settled compute leases. This fee is routed through automated on-chain contracts:
-*   **20% Buyback and Burn**: 20% of all accumulated protocol fees are automatically converted to $OBSC tokens via decentralized exchanges (DEXs) and permanently burned, reducing the circulating supply.
-*   **80% USDC Staking Yield**: 80% of protocol fees are distributed directly to $OBSC token stakers as real yield in USDC, aligning long-term token holders with protocol transaction volume.
+*   **20% Buyback and Burn**: 20% of all accumulated protocol fees are automatically converted to $OBSCURA tokens via decentralized exchanges (DEXs) and permanently burned, reducing the circulating supply.
+*   **80% USDC Staking Yield**: 80% of protocol fees are distributed directly to $OBSCURA token stakers as real yield in USDC, aligning long-term token holders with protocol transaction volume.
 
 ### 5.2 Node Operator Staking
-Operators running matching engines or hosting compute capacity are required to lock up a minimum stake of $OBSC. If an operator reports a fraudulent match, drops hardware availability during a lease, or breaches ZK constraints, their staked $OBSC is partially or fully slashed and redistributed to affected buyers.
+Operators running matching engines or hosting compute capacity are required to lock up a minimum stake of $OBSCURA. If an operator reports a fraudulent match, drops hardware availability during a lease, or breaches ZK constraints, their staked $OBSCURA is partially or fully slashed and redistributed to affected buyers.
 
 ### 5.3 SAS Passports for AI Agents
 To support autonomous AI agents, Obscura provides programmatic access via the Sovereign Agent Service (SAS).
 *   **Spend Controls**: Agents generate SAS Passports that enforce hard spending caps, lease limits, and GPU model policies.
-*   **Token-Gated Tiers**: API access rates are determined by the agent's staked $OBSC balance:
+*   **Token-Gated Tiers**: API access rates are determined by the agent's staked $OBSCURA balance:
     -   **Bronze Tier**: 60 requests/min.
     -   **Silver Tier**: 1,200 requests/min + priority batch allocation.
     -   **Gold Tier**: 3,000 requests/min + zero-latency order relaying.
@@ -285,7 +285,7 @@ export default function WhitepaperPage() {
 
               <div>
                 <h2 className="text-2xl font-bold text-foreground border-b border-border/60 pb-2 mb-4">
-                  5. Tokenomics ($OBSC) & Sovereign Agent Service (SAS)
+                  5. Tokenomics ($OBSCURA) & Sovereign Agent Service (SAS)
                 </h2>
                 
                 <h3 className="text-lg font-semibold text-foreground mt-4 mb-2">
@@ -295,18 +295,18 @@ export default function WhitepaperPage() {
                   Obscura collects a 2.5% protocol fee on all settled compute leases. This fee is routed through automated on-chain contracts:
                 </p>
                 <ul className="list-disc pl-6 space-y-2 mb-4">
-                  <li><strong className="text-foreground">20% Buyback and Burn:</strong> 20% of protocol fees are automatically converted to $OBSC tokens via decentralized exchanges (DEXs) and permanently burned, reducing supply.</li>
-                  <li><strong className="text-foreground">80% USDC Staking Yield:</strong> 80% of protocol fees are distributed directly to $OBSC token stakers as real yield in USDC, aligning holders with protocol transaction volume.</li>
+                  <li><strong className="text-foreground">20% Buyback and Burn:</strong> 20% of protocol fees are automatically converted to $OBSCURA tokens via decentralized exchanges (DEXs) and permanently burned, reducing supply.</li>
+                  <li><strong className="text-foreground">80% USDC Staking Yield:</strong> 80% of protocol fees are distributed directly to $OBSCURA token stakers as real yield in USDC, aligning holders with protocol transaction volume.</li>
                 </ul>
 
                 <h3 className="text-lg font-semibold text-foreground mt-6 mb-2">
                   5.2 Node Operator Staking & SAS Passports
                 </h3>
                 <p className="leading-relaxed">
-                  Operators running matching engines or hosting compute capacity are required to lock up a minimum stake of $OBSC. If an operator reports a fraudulent match, drops hardware availability during a lease, or breaches ZK constraints, their staked $OBSC is slashed.
+                  Operators running matching engines or hosting compute capacity are required to lock up a minimum stake of $OBSCURA. If an operator reports a fraudulent match, drops hardware availability during a lease, or breaches ZK constraints, their staked $OBSCURA is slashed.
                 </p>
                 <p className="leading-relaxed mt-4">
-                  To support autonomous AI agents, Obscura provides programmatic access via the Sovereign Agent Service (SAS). Agents generate SAS Passports that enforce hard spending caps, lease limits, and GPU model policies. API access rate limits are determined by the agent's staked $OBSC balance (Bronze, Silver, Gold Tiers).
+                  To support autonomous AI agents, Obscura provides programmatic access via the Sovereign Agent Service (SAS). Agents generate SAS Passports that enforce hard spending caps, lease limits, and GPU model policies. API access rate limits are determined by the agent's staked $OBSCURA balance (Bronze, Silver, Gold Tiers).
                 </p>
               </div>
 
