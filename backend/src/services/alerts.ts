@@ -53,14 +53,36 @@ export async function checkPriceAlerts(
       `[alerts] Price alert triggered for wallet ${alert.wallet}: ${alert.gpu_type} clearing price is now $${clearingPrice}/hr (target was <= $${targetVal}/hr)`
     );
 
-    broadcast("price_alert", {
-      id: alert.id,
-      wallet: alert.wallet,
-      gpuType: alert.gpu_type,
-      targetPrice: targetVal,
-      clearingPrice,
-      network: alert.network,
-      triggeredAt: alert.triggered_at,
-    });
+    let priceAlertsEnabled = true;
+    try {
+      const { rows: userRows } = await runner.query<{
+        notification_prefs: any;
+      }>(
+        `SELECT notification_prefs FROM users WHERE wallet = $1`,
+        [alert.wallet]
+      );
+      if (userRows.length > 0 && userRows[0].notification_prefs) {
+        const prefs = userRows[0].notification_prefs;
+        if (prefs.priceAlertsEnabled === false) {
+          priceAlertsEnabled = false;
+        }
+      }
+    } catch (err) {
+      console.error(`[alerts] failed to query notification preferences for ${alert.wallet}:`, err);
+    }
+
+    if (priceAlertsEnabled) {
+      broadcast("price_alert", {
+        id: alert.id,
+        wallet: alert.wallet,
+        gpuType: alert.gpu_type,
+        targetPrice: targetVal,
+        clearingPrice,
+        network: alert.network,
+        triggeredAt: alert.triggered_at,
+      });
+    } else {
+      console.log(`[alerts] WS broadcast skipped for ${alert.wallet} because priceAlertsEnabled is false`);
+    }
   }
 }

@@ -252,6 +252,27 @@ export const alertsApi = {
     }),
 };
 
+export interface NotificationPrefs {
+  emailEnabled: boolean;
+  emailAddress: string;
+  telegramEnabled: boolean;
+  telegramUsername: string;
+  priceAlertsEnabled: boolean;
+  orderFillsEnabled: boolean;
+}
+
+export const notificationsApi = {
+  get: (wallet: string) =>
+    call<NotificationPrefs>(
+      `/api/session/notification-prefs?wallet=${encodeURIComponent(wallet)}`
+    ),
+  update: (wallet: string, prefs: NotificationPrefs) =>
+    call<NotificationPrefs>("/api/session/notification-prefs", {
+      method: "PUT",
+      body: JSON.stringify({ wallet, ...prefs }),
+    }),
+};
+
 export const authApi = {
   nonce: () =>
     call<{ nonce: string; statement: string }>("/api/auth/nonce", {
