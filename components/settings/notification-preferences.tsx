@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { FadeIn } from "@/components/motion";
 import { DataError } from "@/components/marketplace/marketplace-live";
 import { useWallet } from "@/lib/wallet";
-import { notificationsApi, type NotificationPrefs } from "@/lib/api";
+import { notificationsApi, telegramApi, type NotificationPrefs } from "@/lib/api";
 
 export function NotificationPreferences() {
   const { wallet } = useWallet();
@@ -24,6 +24,11 @@ export function NotificationPreferences() {
   const [priceAlertsEnabled, setPriceAlertsEnabled] = useState(true);
   const [orderFillsEnabled, setOrderFillsEnabled] = useState(true);
 
+  // Telegram linking (chat-id capture via /start)
+  const [tgConfigured, setTgConfigured] = useState(false);
+  const [tgLinked, setTgLinked] = useState(false);
+  const [tgBusy, setTgBusy] = useState(false);
+
   const load = useCallback(async (w: string) => {
     try {
       const data = await notificationsApi.get(w);
@@ -37,7 +42,50 @@ export function NotificationPreferences() {
     } catch (e) {
       setError(e instanceof Error ? e.message : "failed to load notification preferences");
     }
+    try {
+      const s = await telegramApi.status(w);
+      setTgConfigured(s.configured);
+      setTgLinked(s.linked);
+    } catch {
+      /* non-fatal */
+    }
   }, []);
+
+  async function connectTelegram() {
+    if (!wallet) return;
+    setTgBusy(true);
+    setError(null);
+    try {
+      const { deepLink } = await telegramApi.linkCode(wallet);
+      window.open(deepLink, "_blank", "noopener,noreferrer");
+      // Poll for the /start to land (up to ~30s).
+      for (let i = 0; i < 12; i++) {
+        await new Promise((r) => setTimeout(r, 2500));
+        const s = await telegramApi.status(wallet);
+        if (s.linked) {
+          setTgLinked(true);
+          break;
+        }
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to start Telegram linking");
+    } finally {
+      setTgBusy(false);
+    }
+  }
+
+  async function disconnectTelegram() {
+    if (!wallet) return;
+    setTgBusy(true);
+    try {
+      await telegramApi.unlink(wallet);
+      setTgLinked(false);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to unlink Telegram");
+    } finally {
+      setTgBusy(false);
+    }
+  }
 
   useEffect(() => {
     if (wallet) void load(wallet);
@@ -157,6 +205,51 @@ export function NotificationPreferences() {
                     required={telegramEnabled}
                     className="w-full rounded-md border border-border bg-background pl-7 pr-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none"
                   />
+                </div>
+
+                {/* Connect Telegram — captures chat id via /start (#10) */}
+                <div className="mt-3 rounded-lg border border-border/60 bg-background/40 p-3">
+                  {!tgConfigured ? (
+                    <p className="text-[11px] text-muted-foreground">
+                      Telegram delivery isn&apos;t enabled on this deployment yet — your
+                      preference is saved and activates once it&apos;s configured.
+                    </p>
+                  ) : tgLinked ? (
+                    <div className="flex items-center justify-between">
+                      <span className="flex items-center gap-1.5 text-xs text-primary">
+                        <CheckCircle2 className="h-3.5 w-3.5" /> Telegram connected
+                      </span>
+                      <button
+                        type="button"
+                        onClick={disconnectTelegram}
+                        disabled={tgBusy}
+                        className="text-[11px] text-muted-foreground transition-colors hover:text-destructive disabled:opacity-50"
+                      >
+                        Disconnect
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-[11px] text-muted-foreground">
+                        Connect Telegram so receipts can reach you — opens the bot, then tap{" "}
+                        <b className="text-foreground">Start</b>.
+                      </p>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={connectTelegram}
+                        disabled={tgBusy}
+                      >
+                        {tgBusy ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Send className="h-3.5 w-3.5" />
+                        )}
+                        Connect
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </FadeIn>
             )}
