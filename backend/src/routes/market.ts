@@ -58,3 +58,36 @@ marketRouter.get(
     });
   }),
 );
+
+// GET /api/market/prices/history — price history over the last 24 hours per GPU type.
+marketRouter.get(
+  "/market/prices/history",
+  asyncHandler(async (_req, res) => {
+    const { rows } = await query<{
+      gpu_type: string;
+      clearing_price: string;
+      ts: Date;
+    }>(`
+      SELECT gpu_type, clearing_price, ts
+      FROM market_prices
+      WHERE network = $1 AND ts > now() - interval '24 hours'
+      ORDER BY gpu_type, ts ASC
+    `, [env.network]);
+
+    // Group by gpuType
+    const history: Record<string, { price: number; ts: Date }[]> = {};
+    for (const r of rows) {
+      const list = history[r.gpu_type] ?? [];
+      list.push({
+        price: Number(r.clearing_price),
+        ts: r.ts,
+      });
+      history[r.gpu_type] = list;
+    }
+
+    res.json({
+      history,
+    });
+  }),
+);
+
