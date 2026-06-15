@@ -18,6 +18,16 @@ import { broadcast } from "./websocket.ts";
 
 let running = false;
 let timer: ReturnType<typeof setInterval> | null = null;
+let lastRunTimestamp = Date.now();
+
+export function getMatchingStatus() {
+  const intervalSeconds = Math.max(5, env.matchingIntervalSeconds);
+  return {
+    lastRun: lastRunTimestamp,
+    nextRun: lastRunTimestamp + intervalSeconds * 1000,
+    intervalSeconds,
+  };
+}
 
 interface Intent {
   order_id: string;
@@ -50,6 +60,7 @@ export function stopMatchingEngine(): void {
 export async function runBatch(): Promise<BatchResult> {
   if (running) return { batchId: null, totalFills: 0, byGpu: [] };
   running = true;
+  lastRunTimestamp = Date.now();
   const client = await pool.connect();
   try {
     const { rows: intents } = await client.query<Intent>(
@@ -227,6 +238,7 @@ export async function runBatch(): Promise<BatchResult> {
           gpuTypes: Number(s?.gpu_types ?? 0),
           totalFills: Number(s?.total_fills ?? 0),
           avgClearingPrice: s?.avg_price ? Number(s.avg_price) : null,
+          batchStats: getMatchingStatus(),
         };
 
         const breakdown = metricsRes.rows.map((r) => {

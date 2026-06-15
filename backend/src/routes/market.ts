@@ -3,6 +3,7 @@ import { Router } from "express";
 import { query } from "../db/index.ts";
 import { asyncHandler } from "../lib/async.ts";
 import { env } from "../lib/env.ts";
+import { getMatchingStatus } from "../services/matching.ts";
 
 export const marketRouter = Router();
 
@@ -53,6 +54,7 @@ marketRouter.get(
       gpuTypes: Number(r?.gpu_types ?? 0),
       totalFills: Number(r?.total_fills ?? 0),
       avgClearingPrice: r?.avg_price ? Number(r.avg_price) : null,
+      batchStats: getMatchingStatus(),
     });
   }),
 );
