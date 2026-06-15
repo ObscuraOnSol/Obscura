@@ -35,46 +35,68 @@ Obscura keeps **two privacy planes** separate by design:
 ### Architecture Flow
 
 ```mermaid
-flowchart TD
-    subgraph Clients ["Clients & Agents"]
-        A["Next.js Web UI"]
-        B["AI Agents via API"]
+%%{init: {
+  'theme': 'dark',
+  'themeVariables': {
+    'background': '#0B0F19',
+    'primaryColor': '#111827',
+    'primaryTextColor': '#F3F4F6',
+    'primaryBorderColor': '#374151',
+    'lineColor': '#38BDF8',
+    'secondaryColor': '#1F2937',
+    'tertiaryColor': '#111827'
+  }
+}}%%
+flowchart TB
+    subgraph Clients ["1. CLIENT LAYER (Off-Chain)"]
+        direction LR
+        UI["Next.js Web UI"]
+        Agent["AI Agents / API"]
     end
 
-    subgraph Backend ["Obscura Backend Services"]
-        C["API Gateway / Express Router"]
-        D[(PostgreSQL DB)]
-        E["Matching Engine Worker"]
-        F["Escrow & Payout Manager"]
+    subgraph Backend ["2. OBSCURA SERVICES (Private, Off-Chain)"]
+        direction TB
+        Gateway["API Gateway"]
+        DB[("PostgreSQL DB")]
+        Match["Matching Engine"]
+        Escrow["Escrow Payout Monitor"]
+
+        Gateway -->|Store Intents| DB
+        Match <-->|ZK Match Bids| DB
+        Escrow -->|Release Credentials & Restore Capacity| DB
     end
 
-    subgraph Solana ["Solana Blockchain"]
-        G["Obscura Anchor Program"]
-        H["USDC Escrow Vault"]
+    subgraph Solana ["3. SOLANA NETWORK (Public, On-Chain)"]
+        direction TB
+        Anchor["Anchor Program"]
+        Vault[("USDC Escrow Vault")]
+
+        Anchor -->|Lock USDC| Vault
     end
 
-    %% Client requests
-    A -->|1. Commit Hash / Auth| C
-    B -->|1. Commit Hash / API Key| C
-    C -->|Store Commit| D
+    %% Flow Interactions
+    UI ==>|1. Commit & Reveal| Gateway
+    Agent ==>|1. Commit & Reveal| Gateway
+    
+    UI ==>|3. Pay USDC Escrow| Anchor
+    Agent ==>|3. Pay USDC Escrow| Anchor
+    
+    Anchor -.->|4. Verify Transaction| Escrow
+    Escrow -->|5. Release Provider Payout| Anchor
+    
+    Gateway -.->|6. Provide SSH Access| UI
+    Gateway -.->|6. Provide SSH Access| Agent
 
-    %% Reveal phase
-    A -->|2. Reveal Price & Qty| C
-    B -->|2. Reveal Price & Qty| C
-    C -->|Update status to Revealed| D
+    %% Styles
+    classDef clientNode fill:#1E293B,stroke:#38BDF8,stroke-width:2px,color:#F8FAFC;
+    classDef backendNode fill:#1E293B,stroke:#9945FF,stroke-width:2px,color:#F8FAFC;
+    classDef dbNode fill:#111827,stroke:#F59E0B,stroke-width:2px,color:#F8FAFC;
+    classDef solanaNode fill:#111827,stroke:#14F195,stroke-width:2px,color:#F8FAFC;
 
-    %% Matching Engine
-    E -->|3. Read Revealed Bids| D
-    E -->|4. Clear Batch & Set Price| E
-    E -->|5. Write Settlements & Oracle Prices| D
-
-    %% Settlement & Escrow
-    C -->|6. Get matched status & 402 Gate| A
-    C -->|7. Request settlement tx| B
-    F -->|8. Release USDC payout| G
-    G -->|9. Transfer USDC| H
-    F -->|10. Expose SSH Credentials| D
-    A & B -->|11. Retrieve SSH access| C
+    class UI,Agent clientNode;
+    class Gateway,Match,Escrow backendNode;
+    class DB,Vault dbNode;
+    class Anchor solanaNode;
 ```
 
 ## Core features
