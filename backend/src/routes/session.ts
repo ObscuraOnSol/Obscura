@@ -475,5 +475,61 @@ sessionRouter.get(
     // Otherwise, generate a consistent, unique mock credentials for this order pointing to our backend host
     const mockConn = getDynamicMockConnection(id, req.hostname);
     res.json(mockConn);
-  }),
+  })
 );
+
+// GET /api/session/orders/:id/receipt
+sessionRouter.get(
+  "/session/orders/:id/receipt",
+  asyncHandler(async (req, res) => {
+    const id = String(req.params.id);
+    const w = wallet.safeParse(req.query.wallet);
+    if (!w.success) {
+      res.status(400).json({ error: "valid ?wallet= required" });
+      return;
+    }
+
+    const { rows } = await query<{
+      id: string;
+      batch_id: string | null;
+      gpu_type: string;
+      clearing_price: string | null;
+      hours: number | null;
+      ts: Date;
+      status: string;
+    }>(
+      `SELECT id, batch_id, gpu_type, clearing_price, hours, ts, status 
+       FROM orders WHERE id = $1 AND wallet = $2`,
+      [id, w.data]
+    );
+
+    if (rows.length === 0) {
+      res.status(404).json({ error: "order_not_found", message: "Order not found" });
+      return;
+    }
+
+    const order = rows[0];
+    if (!order.batch_id) {
+      res.status(400).json({
+        error: "order_not_filled",
+        message: "Order has not been filled/matched in a batch yet"
+      });
+      return;
+    }
+
+    const price = order.clearing_price ? parseFloat(order.clearing_price) : 0;
+    const hours = order.hours ?? 0;
+
+    res.json({
+      orderId: order.id,
+      batchId: Number(order.batch_id),
+      gpuType: order.gpu_type,
+      clearingPrice: price,
+      hours: hours,
+      totalCost: price * hours,
+      timestamp: order.ts,
+      status: order.status
+    });
+  })
+);
+

@@ -180,9 +180,10 @@ export async function runBatch(): Promise<BatchResult> {
                assigned_password = $4,
                assigned_provider_wallet = $5,
                clearing_price = $6,
-               hours = $7
-           WHERE id = $8`,
-          [host, port, username, password, provWallet, clearingPrice, orderHours, orderId],
+               hours = $7,
+               batch_id = $8
+           WHERE id = $9`,
+          [host, port, username, password, provWallet, clearingPrice, orderHours, batchId, orderId],
         );
       }
 
