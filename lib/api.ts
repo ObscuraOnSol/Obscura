@@ -82,6 +82,11 @@ export interface MarketStats {
   gpuTypes: number;
   totalFills: number;
   avgClearingPrice: number | null;
+  batchStats?: {
+    lastRun: number;
+    nextRun: number;
+    intervalSeconds: number;
+  };
 }
 export interface Settlement {
   batchId: number;
