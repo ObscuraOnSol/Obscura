@@ -101,8 +101,8 @@ providersRouter.post(
     }
 
     const { rows } = await query<{ id: string }>(
-      `INSERT INTO providers (wallet, gpu_type, capacity, stake_amount, status, host, port, username, password, rate_micro)
-       VALUES ($1, $2, $3, $4, 'active', $5, $6, $7, $8, $9) RETURNING id`,
+      `INSERT INTO providers (wallet, gpu_type, capacity, stake_amount, status, host, port, username, password, rate_micro, network)
+       VALUES ($1, $2, $3, $4, 'active', $5, $6, $7, $8, $9, $10) RETURNING id`,
       [
         wallet,
         gpuType,
@@ -113,6 +113,7 @@ providersRouter.post(
         username,
         password,
         rateMicro,
+        env.network,
       ],
     );
     res.status(201).json({ id: rows[0].id, gpuType, capacity, status: "active" });
@@ -139,8 +140,9 @@ providersRouter.get(
        FROM providers
        WHERE status = 'active'
          AND ($1::text IS NULL OR gpu_type = $1)
+         AND network = $2
        ORDER BY rate_micro ASC, updated_at DESC`,
-      [gpuType],
+      [gpuType, env.network],
     );
     res.json({
       providers: rows.map((r) => ({

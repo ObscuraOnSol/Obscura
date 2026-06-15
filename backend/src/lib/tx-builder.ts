@@ -6,8 +6,9 @@ import {
 } from "@solana/spl-token";
 import { env } from "./env.ts";
 
-function getUsdcMint(): PublicKey {
-  const isMainnet = env.network === "mainnet" || env.network === "mainnet-beta";
+function getUsdcMint(network?: string): PublicKey {
+  const targetNetwork = network || env.network;
+  const isMainnet = targetNetwork === "mainnet" || targetNetwork === "mainnet-beta";
   return new PublicKey(isMainnet ? env.usdcMint : env.usdcMintDevnet);
 }
 
@@ -16,15 +17,17 @@ export async function buildSplitTransferTx(
   recipient1Address: string,
   amount1Usdc: number,
   recipient2Address: string,
-  amount2Usdc: number
+  amount2Usdc: number,
+  network?: string
 ): Promise<string> {
-  const isMainnet = env.network === "mainnet" || env.network === "mainnet-beta";
+  const targetNetwork = network || env.network;
+  const isMainnet = targetNetwork === "mainnet" || targetNetwork === "mainnet-beta";
   const rpcUrl = process.env.SOLANA_RPC_URL || 
     (isMainnet ? "https://api.mainnet-beta.solana.com" : "https://api.devnet.solana.com");
   
   const connection = new Connection(rpcUrl, "confirmed");
   const payer = new PublicKey(payerWallet);
-  const mint = getUsdcMint();
+  const mint = getUsdcMint(targetNetwork);
   
   const recipient1 = new PublicKey(recipient1Address);
   const recipient2 = new PublicKey(recipient2Address);
@@ -105,15 +108,17 @@ export async function buildSplitTransferTx(
 export async function buildSingleTransferTx(
   payerWallet: string,
   recipientAddress: string,
-  amountUsdc: number
+  amountUsdc: number,
+  network?: string
 ): Promise<string> {
-  const isMainnet = env.network === "mainnet" || env.network === "mainnet-beta";
+  const targetNetwork = network || env.network;
+  const isMainnet = targetNetwork === "mainnet" || targetNetwork === "mainnet-beta";
   const rpcUrl = process.env.SOLANA_RPC_URL || 
     (isMainnet ? "https://api.mainnet-beta.solana.com" : "https://api.devnet.solana.com");
   
   const connection = new Connection(rpcUrl, "confirmed");
   const payer = new PublicKey(payerWallet);
-  const mint = getUsdcMint();
+  const mint = getUsdcMint(targetNetwork);
   const recipient = new PublicKey(recipientAddress);
   
   // Find sender token account dynamically

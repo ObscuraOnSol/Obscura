@@ -2,6 +2,7 @@ import { Router } from "express";
 
 import { query } from "../db/index.ts";
 import { asyncHandler } from "../lib/async.ts";
+import { env } from "../lib/env.ts";
 
 export const settlementsRouter = Router();
 
@@ -19,9 +20,10 @@ settlementsRouter.get(
     }>(
       `SELECT batch_id, gpu_type, clearing_price, fill_count, ts
        FROM settlements
+       WHERE network = $1
        ORDER BY ts DESC
-       LIMIT $1`,
-      [limit],
+       LIMIT $2`,
+      [env.network, limit],
     );
     res.json({
       settlements: rows.map((r) => ({

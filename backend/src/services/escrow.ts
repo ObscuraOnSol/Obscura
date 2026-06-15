@@ -44,8 +44,9 @@ export async function processEscrowPayouts(): Promise<void> {
       hours: number;
       payouts_completed: number;
       lease_started_at: Date;
+      network: string;
     }>(
-      `SELECT id, assigned_provider_wallet, assigned_host, assigned_port, clearing_price, hours, payouts_completed, lease_started_at
+      `SELECT id, assigned_provider_wallet, assigned_host, assigned_port, clearing_price, hours, payouts_completed, lease_started_at, network
        FROM orders
        WHERE status = 'settled'
          AND payouts_completed < hours
@@ -75,7 +76,7 @@ export async function processEscrowPayouts(): Promise<void> {
             console.log(`[escrow] Executing payout of ${rate} USDC to provider ${order.assigned_provider_wallet} for order ${order.id}...`);
             
             // Execute transfer on-chain
-            const txSig = await sendUsdcFromService(order.assigned_provider_wallet, rate);
+            const txSig = await sendUsdcFromService(order.assigned_provider_wallet, rate, order.network);
             
             // Increment payouts_completed in DB
             const nextPayoutCount = order.payouts_completed + 1;
@@ -93,8 +94,8 @@ export async function processEscrowPayouts(): Promise<void> {
               await client.query(
                 `UPDATE providers 
                  SET capacity = capacity + $1, updated_at = now()
-                 WHERE wallet = $2 AND host = $3 AND port = $4 AND status = 'active'`,
-                [order.hours, order.assigned_provider_wallet, order.assigned_host, order.assigned_port]
+                 WHERE wallet = $2 AND host = $3 AND port = $4 AND network = $5 AND status = 'active'`,
+                [order.hours, order.assigned_provider_wallet, order.assigned_host, order.assigned_port, order.network]
               );
             }
             

@@ -15,9 +15,11 @@ export async function verifyUsdcTransfer(
   txSig: string,
   expectedSender: string,
   expectedRecipient: string,
-  expectedAmountUsdc: number
+  expectedAmountUsdc: number,
+  network?: string
 ): Promise<boolean> {
-  const isMainnet = env.network === "mainnet" || env.network === "mainnet-beta";
+  const targetNetwork = network || env.network;
+  const isMainnet = targetNetwork === "mainnet" || targetNetwork === "mainnet-beta";
   
   // Use configured SOLANA_RPC_URL or default public endpoints
   const rpcUrl = process.env.SOLANA_RPC_URL || 
@@ -132,9 +134,11 @@ export async function verifyUsdcSplitTransfer(
   expectedRecipient1: string,
   expectedAmount1Usdc: number,
   expectedRecipient2: string,
-  expectedAmount2Usdc: number
+  expectedAmount2Usdc: number,
+  network?: string
 ): Promise<boolean> {
-  const isMainnet = env.network === "mainnet" || env.network === "mainnet-beta";
+  const targetNetwork = network || env.network;
+  const isMainnet = targetNetwork === "mainnet" || targetNetwork === "mainnet-beta";
   const rpcUrl = process.env.SOLANA_RPC_URL || 
     (isMainnet ? "https://api.mainnet-beta.solana.com" : "https://api.devnet.solana.com");
   const usdcMint = isMainnet ? env.usdcMint : env.usdcMintDevnet;
@@ -244,9 +248,11 @@ export async function verifyUsdcSplitTransfer(
 
 export async function sendUsdcFromService(
   recipientWallet: string,
-  amountUsdc: number
+  amountUsdc: number,
+  network?: string
 ): Promise<string> {
-  const isMainnet = env.network === "mainnet" || env.network === "mainnet-beta";
+  const targetNetwork = network || env.network;
+  const isMainnet = targetNetwork === "mainnet" || targetNetwork === "mainnet-beta";
   const rpcUrl = process.env.SOLANA_RPC_URL || 
     (isMainnet ? "https://api.mainnet-beta.solana.com" : "https://api.devnet.solana.com");
   

@@ -51,9 +51,9 @@ sessionRouter.post(
     const { gpuType, commitHash: hash } = parsed.data;
     await ensureUser(w);
     const { rows } = await query<{ id: string; ts: Date }>(
-      `INSERT INTO orders (wallet, gpu_type, commit_hash, status)
-       VALUES ($1, $2, $3, 'committed') RETURNING id, ts`,
-      [w, gpuType, hash.replace(/^0x/, "")],
+      `INSERT INTO orders (wallet, gpu_type, commit_hash, status, network)
+       VALUES ($1, $2, $3, 'committed', $4) RETURNING id, ts`,
+      [w, gpuType, hash.replace(/^0x/, ""), env.network],
     );
     res.status(201).json({
       id: rows[0].id,
@@ -141,8 +141,9 @@ sessionRouter.post(
       assigned_provider_wallet: string | null;
       clearing_price: string | null;
       hours: number | null;
+      network: string;
     }>(
-      `SELECT status, assigned_provider_wallet, clearing_price, hours 
+      `SELECT status, assigned_provider_wallet, clearing_price, hours, network 
        FROM orders WHERE id = $1 AND wallet = $2`,
       [id, w],
     );
@@ -172,7 +173,8 @@ sessionRouter.post(
       const serializedTx = await buildSingleTransferTx(
         w,
         env.obscuraServiceWallet,
-        combinedAmount
+        combinedAmount,
+        order.network
       );
       res.json({ serializedTx });
     } catch (e) {
@@ -208,8 +210,9 @@ sessionRouter.post(
       assigned_provider_wallet: string | null;
       clearing_price: string | null;
       hours: number | null;
+      network: string;
     }>(
-      `SELECT status, assigned_provider_wallet, clearing_price, hours 
+      `SELECT status, assigned_provider_wallet, clearing_price, hours, network 
        FROM orders WHERE id = $1 AND wallet = $2`,
       [id, w],
     );
@@ -241,6 +244,7 @@ sessionRouter.post(
       w,
       env.obscuraServiceWallet,
       combinedAmount,
+      order.network,
     );
 
     if (!ok) {
@@ -362,8 +366,8 @@ sessionRouter.get(
       lease_started_at: Date | null;
     }>(
       `SELECT id, gpu_type, commit_hash, revealed, status, ts, assigned_provider_wallet, clearing_price, hours, lease_started_at
-       FROM orders WHERE wallet = $1 ORDER BY ts DESC LIMIT 100`,
-      [w.data],
+       FROM orders WHERE wallet = $1 AND network = $2 ORDER BY ts DESC LIMIT 100`,
+      [w.data, env.network],
     );
     res.json({
       orders: rows.map((r) => ({

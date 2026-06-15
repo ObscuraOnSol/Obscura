@@ -30,8 +30,9 @@ ordersRouter.get(
              COUNT(*) FILTER (WHERE status = 'settled')::text AS settled
       FROM orders
       WHERE ts > now() - interval '24 hours'
+        AND network = $1
       GROUP BY gpu_type
-    `);
+    `, [env.network]);
 
     // 2. Get active capacity/depth statistics
     const providersRes = await query<{
@@ -46,8 +47,9 @@ ordersRouter.get(
              COUNT(*)::text AS total_providers
       FROM providers
       WHERE status = 'active'
+        AND network = $1
       GROUP BY gpu_type
-    `);
+    `, [env.network]);
 
     // 3. Get latest clearing prices
     const pricesRes = await query<{
@@ -56,8 +58,9 @@ ordersRouter.get(
     }>(`
       SELECT DISTINCT ON (gpu_type) gpu_type, clearing_price
       FROM market_prices
+      WHERE network = $1
       ORDER BY gpu_type, ts DESC
-    `);
+    `, [env.network]);
 
     // Create a union of all GPU types present in the metrics, providers, or price logs
     const gpus = new Set<string>();
@@ -135,10 +138,10 @@ ordersRouter.post(
     }
     const { gpuType, commitHash } = parsed.data;
     const { rows } = await query<{ id: string; ts: Date }>(
-      `INSERT INTO orders (wallet, gpu_type, commit_hash, status)
-       VALUES ($1, $2, $3, 'committed')
+      `INSERT INTO orders (wallet, gpu_type, commit_hash, status, network)
+       VALUES ($1, $2, $3, 'committed', $4)
        RETURNING id, ts`,
-      [req.agent!.ownerWallet, gpuType, commitHash.replace(/^0x/, "")],
+      [req.agent!.ownerWallet, gpuType, commitHash.replace(/^0x/, ""), env.network],
     );
     res.status(201).json({
       id: rows[0].id,
@@ -163,8 +166,8 @@ ordersRouter.get(
       ts: Date;
     }>(
       `SELECT id, gpu_type, commit_hash, revealed, status, ts
-       FROM orders WHERE wallet = $1 ORDER BY ts DESC LIMIT 100`,
-      [req.agent!.ownerWallet],
+       FROM orders WHERE wallet = $1 AND network = $2 ORDER BY ts DESC LIMIT 100`,
+      [req.agent!.ownerWallet, env.network],
     );
     res.json({
       orders: rows.map((r) => ({
@@ -273,8 +276,9 @@ ordersRouter.post(
       assigned_provider_wallet: string | null;
       clearing_price: string | null;
       hours: number | null;
+      network: string;
     }>(
-      `SELECT status, assigned_provider_wallet, clearing_price, hours 
+      `SELECT status, assigned_provider_wallet, clearing_price, hours, network 
        FROM orders WHERE id = $1 AND wallet = $2`,
       [id, w],
     );
@@ -304,7 +308,8 @@ ordersRouter.post(
       const serializedTx = await buildSingleTransferTx(
         w,
         env.obscuraServiceWallet,
-        combinedAmount
+        combinedAmount,
+        order.network
       );
       res.json({ serializedTx });
     } catch (e) {
@@ -340,8 +345,9 @@ ordersRouter.post(
       assigned_provider_wallet: string | null;
       clearing_price: string | null;
       hours: number | null;
+      network: string;
     }>(
-      `SELECT status, assigned_provider_wallet, clearing_price, hours 
+      `SELECT status, assigned_provider_wallet, clearing_price, hours, network 
        FROM orders WHERE id = $1 AND wallet = $2`,
       [id, w],
     );
@@ -372,6 +378,7 @@ ordersRouter.post(
       w,
       env.obscuraServiceWallet,
       combinedAmount,
+      order.network,
     );
 
     if (!ok) {

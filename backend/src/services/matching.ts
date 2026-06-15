@@ -23,6 +23,7 @@ interface Intent {
   gpu_type: string;
   price_micro: string;
   qty: number;
+  network: string;
 }
 
 export interface BatchResult {
@@ -51,25 +52,31 @@ export async function runBatch(): Promise<BatchResult> {
   const client = await pool.connect();
   try {
     const { rows: intents } = await client.query<Intent>(
-      `SELECT order_id, gpu_type, price_micro, qty FROM order_intents`,
+      `SELECT oi.order_id, oi.gpu_type, oi.price_micro, oi.qty, o.network
+       FROM order_intents oi
+       JOIN orders o ON oi.order_id = o.id`,
     );
     if (intents.length === 0) {
       return { batchId: null, totalFills: 0, byGpu: [] };
     }
 
-    // Active capacity per GPU type (the implicit sell side).
-    const { rows: caps } = await client.query<{ gpu_type: string; cap: string }>(
-      `SELECT gpu_type, COALESCE(SUM(capacity), 0) AS cap
-       FROM providers WHERE status = 'active' GROUP BY gpu_type`,
+    // Active capacity per GPU type & network.
+    const { rows: caps } = await client.query<{ gpu_type: string; network: string; cap: string }>(
+      `SELECT gpu_type, network, COALESCE(SUM(capacity), 0) AS cap
+       FROM providers WHERE status = 'active' GROUP BY gpu_type, network`,
     );
-    const capByGpu = new Map(caps.map((c) => [c.gpu_type, Number(c.cap)]));
+    const capByGpuNet = new Map<string, number>();
+    for (const c of caps) {
+      capByGpuNet.set(`${c.gpu_type}_${c.network}`, Number(c.cap));
+    }
 
-    // Group intents by GPU.
-    const byGpu = new Map<string, Intent[]>();
+    // Group intents by GPU type and network.
+    const byGpuNet = new Map<string, Intent[]>();
     for (const it of intents) {
-      const list = byGpu.get(it.gpu_type) ?? [];
+      const key = `${it.gpu_type}_${it.network}`;
+      const list = byGpuNet.get(key) ?? [];
       list.push(it);
-      byGpu.set(it.gpu_type, list);
+      byGpuNet.set(key, list);
     }
 
     const { rows: b } = await client.query<{ next: string }>(
@@ -81,9 +88,10 @@ export async function runBatch(): Promise<BatchResult> {
     let totalFills = 0;
     const result: BatchResult["byGpu"] = [];
 
-    for (const [gpu, list] of byGpu) {
-      const capacity = capByGpu.get(gpu) ?? 0;
-      if (capacity <= 0) continue; // no liquidity for this GPU
+    for (const [key, list] of byGpuNet) {
+      const [gpu, net] = key.split("_");
+      const capacity = capByGpuNet.get(key) ?? 0;
+      if (capacity <= 0) continue; // no liquidity for this GPU on this network
 
       // Highest bids fill first; the marginal fill sets the clearing price.
       list.sort((a, b) => Number(b.price_micro) - Number(a.price_micro));
@@ -101,16 +109,16 @@ export async function runBatch(): Promise<BatchResult> {
       const clearingPrice = clearingMicro / 1_000_000;
 
       await client.query(
-        `INSERT INTO settlements (ts, batch_id, gpu_type, clearing_price, fill_count)
-         VALUES (now(), $1, $2, $3, $4)`,
-        [batchId, gpu, clearingPrice, filled.length],
+        `INSERT INTO settlements (ts, batch_id, gpu_type, clearing_price, fill_count, network)
+         VALUES (now(), $1, $2, $3, $4, $5)`,
+        [batchId, gpu, clearingPrice, filled.length, net],
       );
       await client.query(
-        `INSERT INTO market_prices (ts, gpu_type, clearing_price) VALUES (now(), $1, $2)`,
-        [gpu, clearingPrice],
+        `INSERT INTO market_prices (ts, gpu_type, clearing_price, network) VALUES (now(), $1, $2, $3)`,
+        [gpu, clearingPrice, net],
       );
       for (const orderId of filled) {
-        // Find an active provider for this GPU type that has capacity > 0
+        // Find an active provider for this GPU type & network that has capacity > 0
         const { rows: matchedProviders } = await client.query<{
           id: string;
           wallet: string;
@@ -121,10 +129,10 @@ export async function runBatch(): Promise<BatchResult> {
         }>(
           `SELECT id, wallet, host, port, username, password 
            FROM providers 
-           WHERE gpu_type = $1 AND status = 'active' AND capacity > 0
+           WHERE gpu_type = $1 AND network = $2 AND status = 'active' AND capacity > 0
            ORDER BY updated_at ASC
            LIMIT 1`,
-          [gpu],
+          [gpu, net],
         );
 
         let host: string | null = null;

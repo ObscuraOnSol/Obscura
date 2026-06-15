@@ -2,6 +2,7 @@ import { Router } from "express";
 
 import { query } from "../db/index.ts";
 import { asyncHandler } from "../lib/async.ts";
+import { env } from "../lib/env.ts";
 
 export const marketRouter = Router();
 
@@ -16,8 +17,9 @@ marketRouter.get(
     }>(`
       SELECT DISTINCT ON (gpu_type) gpu_type, clearing_price, ts
       FROM market_prices
+      WHERE network = $1
       ORDER BY gpu_type, ts DESC
-    `);
+    `, [env.network]);
     res.json({
       prices: rows.map((r) => ({
         gpuType: r.gpu_type,
@@ -43,7 +45,8 @@ marketRouter.get(
         AVG(clearing_price)::text AS avg_price
       FROM settlements
       WHERE ts > now() - interval '24 hours'
-    `);
+        AND network = $1
+    `, [env.network]);
     const r = rows[0];
     res.json({
       window: "24h",
