@@ -8,6 +8,15 @@ const nextConfig: NextConfig = {
   outputFileTracingExcludes: {
     "*": ["./backend/**", "./contract/**"],
   },
+  async redirects() {
+    return [
+      {
+        source: "/agents",
+        destination: "/agent",
+        permanent: true,
+      },
+    ];
+  },
 };
 
 export default nextConfig;
