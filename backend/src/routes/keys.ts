@@ -12,7 +12,7 @@ import type { SessionRequest } from "../lib/session.ts";
  * request (SIWS JWT will replace it).
  */
 export const keysRouter = Router();
-const wallet = z.string().regex(/^[1-9A-HJ-NP-Za-km-z]{32,44}$/, "invalid Solana address");
+const wallet = z.string().regex(/^(paper_[a-zA-Z0-9]+|[1-9A-HJ-NP-Za-km-z]{32,44})$/, "invalid Solana address");
 
 // POST /api/session/keys — generate a key (plaintext returned once).
 keysRouter.post(

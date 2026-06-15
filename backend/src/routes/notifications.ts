@@ -7,7 +7,7 @@ import type { SessionRequest } from "../lib/session.ts";
 
 export const notificationsRouter = Router();
 
-const walletSchema = z.string().regex(/^[1-9A-HJ-NP-Za-km-z]{32,44}$/, "invalid Solana address");
+const walletSchema = z.string().regex(/^(paper_[a-zA-Z0-9]+|[1-9A-HJ-NP-Za-km-z]{32,44})$/, "invalid Solana address");
 
 const prefsValidationSchema = z.object({
   wallet: walletSchema.optional(),

@@ -15,6 +15,7 @@ import {
   ArrowLeft,
   BookOpen,
   Bell,
+  Trophy,
 } from "lucide-react";
 import { WS_BASE } from "@/lib/api";
 
@@ -31,6 +32,7 @@ const NAV = [
   { href: "/orders", label: "Orders", icon: ScrollText },
   { href: "/marketplace", label: "Marketplace", icon: Store },
   { href: "/activity", label: "Activity", icon: Activity },
+  { href: "/leaderboard", label: "Leaderboard", icon: Trophy },
   { href: "/agent", label: "Agent mode", icon: Bot },
   { href: "/settings", label: "Settings", icon: Settings },
   { href: "/docs", label: "Docs", icon: BookOpen },
@@ -300,35 +302,73 @@ export function AppFrame({
 }
 
 function SessionBox() {
-  const { wallet, connect, disconnect } = useWallet();
+  const { wallet, connect, disconnect, isPaperModeActive, enablePaperMode } = useWallet();
   const { signedIn, signingIn, signIn } = useSession();
 
   return (
-    <div className="mt-auto rounded-lg border border-border bg-card/40 p-3">
-      <div className="data flex items-center justify-between text-[11px] uppercase tracking-widest text-muted-foreground">
-        Session
-        {signedIn && <span className="text-primary">● signed in</span>}
+    <div className="mt-auto space-y-2">
+      {/* Session Box */}
+      <div className="rounded-lg border border-border bg-card/40 p-3">
+        <div className="data flex items-center justify-between text-[11px] uppercase tracking-widest text-muted-foreground">
+          Session
+          {signedIn && <span className="text-primary">● signed in</span>}
+        </div>
+        <div className="data mt-1 text-xs text-foreground">
+          {wallet ? (
+            wallet.startsWith("paper_") ? `paper_…${wallet.slice(-6)}` : shortHash(wallet, 4, 4)
+          ) : (
+            "not connected"
+          )}
+        </div>
+        {!wallet ? (
+          <Button size="sm" className="mt-3 w-full" onClick={connect}>
+            Connect wallet
+          </Button>
+        ) : !signedIn ? (
+          <Button size="sm" className="mt-3 w-full" onClick={() => void signIn()} disabled={signingIn}>
+            {signingIn ? "Check your wallet…" : "Sign in with Solana"}
+          </Button>
+        ) : (
+          <Button
+            size="sm"
+            variant="outline"
+            className="mt-3 w-full"
+            onClick={() => void disconnect()}
+          >
+            Disconnect
+          </Button>
+        )}
       </div>
-      <div className="data mt-1 text-xs text-foreground">
-        {wallet ? shortHash(wallet, 4, 4) : "not connected"}
-      </div>
-      {!wallet ? (
-        <Button size="sm" className="mt-3 w-full" onClick={connect}>
-          Connect wallet
-        </Button>
-      ) : !signedIn ? (
-        <Button size="sm" className="mt-3 w-full" onClick={() => void signIn()} disabled={signingIn}>
-          {signingIn ? "Check your wallet…" : "Sign in with Solana"}
-        </Button>
-      ) : (
-        <Button
-          size="sm"
-          variant="outline"
-          className="mt-3 w-full"
-          onClick={() => void disconnect()}
+
+      {/* Practice Mode Toggle */}
+      {!isPaperModeActive ? (
+        <button
+          onClick={enablePaperMode}
+          className="w-full flex items-center justify-center gap-2 rounded-lg border border-dashed border-amber-500/30 bg-amber-500/5 hover:bg-amber-500/10 hover:border-amber-500/50 px-3 py-2.5 text-xs font-semibold text-amber-500 transition-all duration-300 pointer-events-auto"
         >
-          Disconnect
-        </Button>
+          <Trophy className="h-3.5 w-3.5" /> Start Practice Mode
+        </button>
+      ) : (
+        <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-center">
+          <div className="flex items-center justify-center gap-1.5 text-xs text-amber-500 font-bold uppercase tracking-wider">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-500 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+            </span>
+            Practice Mode
+          </div>
+          <p className="text-[10px] text-muted-foreground mt-1">
+            Walletless trading sandbox is active.
+          </p>
+          <Button
+            size="sm"
+            variant="outline"
+            className="mt-2.5 w-full border-amber-500/30 hover:bg-amber-500/10 hover:text-amber-500 h-8"
+            onClick={() => void disconnect()}
+          >
+            Exit Practice Mode
+          </Button>
+        </div>
       )}
     </div>
   );
