@@ -197,7 +197,12 @@ export function MarketplaceLive() {
                           <div>
                             <div className="flex items-center gap-2 text-lg font-semibold">
                               <Cpu className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
-                              {p.gpuType}
+                              <span>{p.gpuType}</span>
+                              {p.capacity <= 0 && (
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                                  Allocated
+                                </span>
+                              )}
                             </div>
                             <div className="text-[10px] text-muted-foreground font-mono mt-1">
                               Operator: {shortHash(p.wallet, 5, 4)}

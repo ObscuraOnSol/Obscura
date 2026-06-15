@@ -129,6 +129,12 @@ export function OrderFlow() {
     }
   }, [gpuType, activeProviders]);
 
+  const isAllocated = useMemo(() => {
+    const providersOfGpu = activeProviders.filter((p) => p.gpuType === gpuType);
+    if (providersOfGpu.length === 0) return false;
+    return providersOfGpu.every((p) => p.capacity <= 0);
+  }, [gpuType, activeProviders]);
+
   useEffect(() => {
     setPrice(computedPrice);
   }, [computedPrice]);
@@ -361,13 +367,30 @@ export function OrderFlow() {
                     onChange={(e) => setGpuType(e.target.value)}
                     className="data flex h-10 w-full rounded-md border border-border bg-background/60 px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
-                    {gpuTypes.map((g) => (
-                      <option key={g} value={g}>
-                        {g}
-                      </option>
-                    ))}
+                    {gpuTypes.map((g) => {
+                      const providersOfGpu = activeProviders.filter((p) => p.gpuType === g);
+                      const allocated = providersOfGpu.length > 0 && providersOfGpu.every((p) => p.capacity <= 0);
+                      return (
+                        <option key={g} value={g}>
+                          {g} {allocated ? " (Allocated)" : ""}
+                        </option>
+                      );
+                    })}
                   </select>
                 </div>
+
+                {isAllocated && (
+                  <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3.5 space-y-1.5 text-xs text-amber-500/90 leading-relaxed">
+                    <div className="flex items-center gap-2 font-bold text-amber-400">
+                      <AlertTriangle className="h-4 w-4 shrink-0 text-amber-400" />
+                      Warning: Hardware Currently Allocated
+                    </div>
+                    <p>
+                      All active provider nodes for <strong className="text-foreground">{gpuType}</strong> are currently in use. 
+                      If you submit this order, it will be placed in the dark pool but may get stuck in the <strong className="text-foreground">reveal</strong> phase and will only match once an allocated node becomes free again.
+                    </p>
+                  </div>
+                )}
 
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">

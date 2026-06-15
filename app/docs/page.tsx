@@ -29,55 +29,18 @@ In traditional compute marketplaces, order details are public, exposing training
 
 ---
 
-## 3. Using Obscura via API
+## 3. Using Obscura via the UI
 
-### 3.1 Authentication
-All programmatic requests to the Obscura API gateway require an API key passed in the headers. You can generate an API key on the Settings tab of your dashboard.
-Header Format:
-\`\`\`http
-X-API-Key: obsc_live_...
-\`\`\`
+Obscura is designed to be fully usable from the web interface for standard users.
 
-### 3.2 Endpoint: Commit Order
-Submit a cryptographic commitment hash for a compute purchase.
-- Method: POST
-- Path: /api/v1/orders/commit
-- Request Body:
-\`\`\`json
-{
-  "gpuType": "H100 80GB",
-  "commitHash": "a1b2c3d4e5f6..."
-}
-\`\`\`
-- Response:
-\`\`\`json
-{
-  "orderId": "8f3b9c2a-7d1e-4f5b-8c6a-9b8c7d6e5f4a",
-  "status": "committed",
-  "createdAt": "2026-06-13T19:45:00Z"
-}
-\`\`\`
+### 3.1 Order Lifecycle on the UI
+1. **GPU Selection:** Browse active hardware configurations on the **Marketplace**. Note that hardware marked as **Allocated** is currently in use; placing an order on allocated hardware may cause your order to be held in the "reveal" status until the node is released.
+2. **Commit Order:** Fill in the lease duration (in hours). Click **Commit Order** to sign a cryptographic commitment hash and secure the estimated USDC rental cost in the escrow contract.
+3. **Reveal Bid:** Once the commitment is recorded, click **Reveal Order** to submit your bid parameters to the upcoming batch auction.
+4. **Settle & Lease:** If matched, sign the settlement transaction to claim your lease. Click **Connect** to open the secure web terminal or retrieve SSH credentials.
 
-### 3.3 Endpoint: Reveal Order
-Reveal the cleartext parameters and salt to enter the matching batch.
-- Method: POST
-- Path: /api/v1/orders/reveal
-- Request Body:
-\`\`\`json
-{
-  "orderId": "8f3b9c2a-7d1e-4f5b-8c6a-9b8c7d6e5f4a",
-  "priceMicro": 1860000,
-  "qty": 4,
-  "secret": "32-byte-hex-secret-salt"
-}
-\`\`\`
-- Response:
-\`\`\`json
-{
-  "orderId": "8f3b9c2a-7d1e-4f5b-8c6a-9b8c7d6e5f4a",
-  "status": "revealed"
-}
-\`\`\`
+### 3.2 Programmatic & AI Agent Access
+For autonomous AI agents, programmatic integrations, or developer credentials, go to the **[Agent Mode](/agent)** dashboard page to retrieve your API keys and read the AI Agent Starter Prompt.
 
 ---
 
@@ -108,7 +71,7 @@ We welcome contributions from developers, researchers, and node operators:
 const NAV_ITEMS = [
   { id: "what-is-obscura", title: "What is Obscura?", icon: BookOpen },
   { id: "how-to-use", title: "How to Use", icon: Terminal },
-  { id: "api-reference", title: "API Reference", icon: Terminal },
+  { id: "using-the-web-ui", title: "Using the Web UI", icon: Terminal },
   { id: "use-cases", title: "Real-World Use Cases", icon: Sparkles },
   { id: "open-source", title: "Open Source", icon: Shield }
 ];
@@ -293,84 +256,45 @@ export default function DocsPage() {
                 </div>
               </section>
 
-              {/* Section 3: Using Obscura via API */}
-              <section id="api-reference" className="scroll-mt-24 space-y-6">
+              {/* Section 3: Using Obscura via UI */}
+              <section id="using-the-web-ui" className="scroll-mt-24 space-y-6">
                 <div className="flex items-center gap-3 border-b border-border/40 pb-3">
                   <Terminal className="h-5 w-5 text-primary" />
-                  <h2 className="text-xl font-bold text-foreground">3. Using Obscura via API</h2>
+                  <h2 className="text-xl font-bold text-foreground">3. Using Obscura via the UI</h2>
                 </div>
 
-                <div className="space-y-4">
+                <div className="space-y-6">
                   <p className="leading-relaxed">
-                    Developers and AI agents can interact with Obscura programmatically using standard HTTP JSON payloads.
+                    Obscura is designed to be fully usable from the web interface for standard users. Below is the step-by-step workflow:
                   </p>
-                  
-                  {/* Auth details */}
-                  <div>
-                    <h3 className="text-foreground font-semibold text-sm uppercase tracking-wider mb-2">3.1 Authentication</h3>
-                    <p className="text-sm mb-3">All API requests must include your client API key in the request headers:</p>
-                    <div className="relative rounded-lg border border-border bg-card/60 p-4 font-mono text-xs text-foreground flex justify-between items-center">
-                      <span>X-API-Key: obsc_live_8f3b9c2a7d1e4f5b8c6a9b8c</span>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => handleCopy("X-API-Key: obsc_live_8f3b9c2a7d1e4f5b8c6a9b8c", "auth")}
-                        className="h-8 w-8 p-0 hover:bg-card"
-                      >
-                        {copiedId === "auth" ? <Check className="h-4 w-4 text-primary" /> : <Copy className="h-4 w-4" />}
-                      </Button>
-                    </div>
-                  </div>
 
-                  {/* Endpoint: Commit */}
-                  <div className="border-t border-border/20 pt-6 space-y-3">
-                    <div className="flex items-center gap-3">
-                      <span className="bg-primary/20 text-primary text-xs font-bold px-2 py-1 rounded">POST</span>
-                      <span className="font-mono text-foreground text-sm">/api/v1/orders/commit</span>
+                  <div className="space-y-4">
+                    <div className="p-4 rounded-xl border border-border bg-card/25 space-y-2">
+                      <strong className="text-foreground block text-sm">🖥️ 3.1 Order Lifecycle on the UI</strong>
+                      <ol className="list-decimal pl-5 space-y-2 text-sm leading-relaxed">
+                        <li>
+                          <strong className="text-foreground">GPU Selection:</strong> Browse active hardware configurations on the Marketplace. Note that hardware marked as <span className="text-amber-400 font-semibold bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20 text-xs">Allocated</span> is currently in use; placing an order on allocated hardware may cause your order to be held in the &quot;reveal&quot; status until the node is released.
+                        </li>
+                        <li>
+                          <strong className="text-foreground">Commit Order:</strong> Fill in the lease duration (in hours). Click **Commit Order** to sign a cryptographic commitment hash and secure the estimated USDC rental cost in the escrow contract.
+                        </li>
+                        <li>
+                          <strong className="text-foreground">Reveal Bid:</strong> Once the commitment is recorded, click **Reveal Order** to submit your bid parameters to the upcoming batch auction.
+                        </li>
+                        <li>
+                          <strong className="text-foreground">Settle &amp; Lease:</strong> If matched, sign the settlement transaction to claim your lease. Click **Connect** to open the secure web terminal or retrieve SSH credentials.
+                        </li>
+                      </ol>
                     </div>
-                    <p className="text-sm">Submit your cryptographic commitment hash and lock compute value in escrow.</p>
-                    <div className="relative rounded-lg border border-border bg-card/60 p-4 font-mono text-xs text-foreground flex justify-between items-start">
-                      <pre className="overflow-x-auto pr-8">
-{`{
-  "gpuType": "H100 80GB",
-  "commitHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-}`}
-                      </pre>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => handleCopy(`{\n  "gpuType": "H100 80GB",\n  "commitHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"\n}`, "commit")}
-                        className="h-8 w-8 p-0 hover:bg-card shrink-0"
-                      >
-                        {copiedId === "commit" ? <Check className="h-4 w-4 text-primary" /> : <Copy className="h-4 w-4" />}
-                      </Button>
-                    </div>
-                  </div>
 
-                  {/* Endpoint: Reveal */}
-                  <div className="border-t border-border/20 pt-6 space-y-3">
-                    <div className="flex items-center gap-3">
-                      <span className="bg-primary/20 text-primary text-xs font-bold px-2 py-1 rounded">POST</span>
-                      <span className="font-mono text-foreground text-sm">/api/v1/orders/reveal</span>
-                    </div>
-                    <p className="text-sm">Submit the cleartext parameters and salt preimage once the reveal window opens.</p>
-                    <div className="relative rounded-lg border border-border bg-card/60 p-4 font-mono text-xs text-foreground flex justify-between items-start">
-                      <pre className="overflow-x-auto pr-8">
-{`{
-  "orderId": "8f3b9c2a-7d1e-4f5b-8c6a-9b8c7d6e5f4a",
-  "priceMicro": 1860000,
-  "qty": 4,
-  "secret": "98939e45dd1932a6a5739912cbf71553b798926fcb7d816a0bab13c67fe87e69"
-}`}
-                      </pre>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => handleCopy(`{\n  "orderId": "8f3b9c2a-7d1e-4f5b-8c6a-9b8c7d6e5f4a",\n  "priceMicro": 1860000,\n  "qty": 4,\n  "secret": "98939e45dd1932a6a5739912cbf71553b798926fcb7d816a0bab13c67fe87e69"\n}`, "reveal")}
-                        className="h-8 w-8 p-0 hover:bg-card shrink-0"
-                      >
-                        {copiedId === "reveal" ? <Check className="h-4 w-4 text-primary" /> : <Copy className="h-4 w-4" />}
-                      </Button>
+                    <div className="p-4 rounded-xl border border-border bg-card/25 space-y-2">
+                      <strong className="text-foreground block text-sm">🤖 3.2 Programmatic &amp; AI Agent Access</strong>
+                      <p className="text-sm leading-relaxed">
+                        If you are building autonomous AI agents or integrating programmatically via the developer gateway, you should use the dedicated API tools and keys.
+                      </p>
+                      <p className="text-sm leading-relaxed mt-2">
+                        Please go to the <Link href="/agent" className="text-primary hover:underline font-semibold inline-flex items-center gap-1">Agent Mode Console</Link> page to generate API credentials, manage rolling spend caps, and review the detailed AI Agent Starter System Prompt.
+                      </p>
                     </div>
                   </div>
                 </div>

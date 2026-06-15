@@ -32,7 +32,14 @@ Obscura uses a secure Commit-Reveal auction mechanism and an on-chain Escrow con
 - Header: Include 'X-API-Key: <YOUR_API_KEY>' on all requests.
 - OpenAPI JSON Spec for reference: https://api.obscuraonsol.com/v1/agents/docs.json
 
-### 2. Step-by-Step Order Lifecycle
+### 2. Operational Considerations
+- **Marketplace Discovery:** Do not hardcode GPU types (like "NVIDIA H100 80GB"). Always query GET /api/orders/metrics or GET /api/providers first to discover active, available hardware types (e.g. "H100", "A100", "RTX 4090", "L40S").
+- **USDC Token Account Requirement:** Your funding wallet must have an initialized USDC Token Account on Solana with sufficient balance. The transaction builder will fail with "insufficient funds" if this is missing.
+- **Price Unit Conversion (priceMicro):** Bid prices are specified in micro-USDC per hour (rate * 1e6). For example, a rate of 1.8 USDC/hour is specified as 1800000.
+- **Devnet vs Mainnet:** Ensure you are signing transactions on the target network (Solana Devnet for testing).
+- **Allocated/In-use Capacity:** If all providers for your selected GPU type are busy (capacity = 0), your order will remain in the "revealed" status until a node is released. Handle fallback GPU options in your logic.
+
+### 3. Step-by-Step Order Lifecycle
 
 #### Phase A: Commit Order
 1. Generate a random 32-byte hex string as your 'secret' (keep it private).
@@ -41,7 +48,7 @@ Obscura uses a secure Commit-Reveal auction mechanism and an on-chain Escrow con
 3. Submit the commit hash:
    - Method: POST
    - Route: /api/orders
-   - Body: { "gpuType": "NVIDIA H100 80GB", "commitHash": "0x<your_commit_hash>" }
+   - Body: { "gpuType": "H100", "commitHash": "0x<your_commit_hash>" }
 4. Store the returned 'id' (this is your order ID).
 
 #### Phase B: Reveal Bid
@@ -49,18 +56,18 @@ Obscura uses a secure Commit-Reveal auction mechanism and an on-chain Escrow con
    - Method: POST
    - Route: /api/orders/{id}/reveal
    - Body: { "priceMicro": 1800000, "qty": 4, "secret": "0x<your_32_byte_secret>" }
-   *(where priceMicro is the USDC rate/hr * 1e6, and qty is lease duration in hours)*
+   *(where priceMicro is the USDC rate/hr * 1e6, e.g. 1800000 = 1.8 USDC/hr)*
 
 #### Phase C: Pay and Settle (X402 Gate)
-1. Periodically check order status:
+1. Poll order status every 500ms; orders match within seconds if supply is available:
    - Method: GET
    - Route: /api/orders/{id}
 2. If the response is HTTP 402 Payment Required:
-   - Read the payload to get payment details (e.g. amountUsdc, escrowWallet, paymentUrl).
+   - Read the payload to get payment details.
    - Fetch the base64-serialized Solana transaction to fund the escrow:
      - Method: POST
      - Route: /api/orders/{id}/build-settle-tx
-   - Sign the returned transaction using your private key and broadcast it to the Solana network to obtain the transaction signature (txSig).
+   - Deserialize the transaction using @solana/web3.js (VersionedTransaction.deserialize), sign it using your wallet's private Keypair, and broadcast it to the network to get the transaction signature (txSig). Note: The funding wallet must be the primary signer of this transaction.
    - Activate the lease by submitting the signature:
      - Method: POST
      - Route: /api/orders/{id}/settle
@@ -73,7 +80,7 @@ Obscura uses a secure Commit-Reveal auction mechanism and an on-chain Escrow con
      "id": "order-id",
      "status": "settled",
      "connection": {
-       "host": "api.obscuraonsol.com",
+       "host": "ssh.obscuraonsol.com",
        "port": "22000",
        "username": "root",
        "password": "..."
