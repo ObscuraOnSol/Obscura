@@ -16,6 +16,7 @@ import { ordersRouter } from "./routes/orders.ts";
 import { sessionRouter } from "./routes/session.ts";
 import { keysRouter } from "./routes/keys.ts";
 import { authRouter } from "./routes/auth.ts";
+import { alertsRouter } from "./routes/alerts.ts";
 import { swaggerHtml, swaggerSpec } from "./lib/swagger.ts";
 
 /** Builds the Express app and wires routes. No server.listen here — see index.ts. */
@@ -78,6 +79,7 @@ export function createAppWithoutDocs() {
   app.use("/api", sessionRouter);
   app.use("/api", keysRouter);
   app.use("/api", authRouter);
+  app.use("/api", alertsRouter);
 
   app.use((_req, res) => {
     res.status(404).json({ error: "not_found" });

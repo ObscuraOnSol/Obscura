@@ -225,6 +225,33 @@ export const keysApi = {
     }),
 };
 
+export interface PriceAlert {
+  id: string;
+  gpuType: string;
+  targetPrice: number;
+  network: string;
+  isTriggered: boolean;
+  triggeredAt: string | null;
+  createdAt: string;
+}
+
+export const alertsApi = {
+  create: (wallet: string, gpuType: string, targetPrice: number) =>
+    call<PriceAlert>("/api/session/price-alerts", {
+      method: "POST",
+      body: JSON.stringify({ wallet, gpuType, targetPrice }),
+    }),
+  list: (wallet: string) =>
+    call<{ alerts: PriceAlert[] }>(
+      `/api/session/price-alerts?wallet=${encodeURIComponent(wallet)}`
+    ),
+  delete: (id: string, wallet: string) =>
+    call<{ id: string; deleted: boolean }>(`/api/session/price-alerts/${id}`, {
+      method: "DELETE",
+      body: JSON.stringify({ wallet }),
+    }),
+};
+
 export const authApi = {
   nonce: () =>
     call<{ nonce: string; statement: string }>("/api/auth/nonce", {
