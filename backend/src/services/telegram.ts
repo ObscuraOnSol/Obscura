@@ -13,6 +13,21 @@ export function telegramConfigured(): boolean {
   return !!env.telegramBotToken;
 }
 
+// Bot @username — from env, else auto-detected from the token via getMe (cached).
+let cachedUsername = env.telegramBotUsername || "";
+export async function ensureBotUsername(): Promise<string> {
+  if (cachedUsername) return cachedUsername;
+  if (!telegramConfigured()) return "";
+  try {
+    const res = await fetch(api("getMe"));
+    const data = (await res.json()) as { ok: boolean; result?: { username?: string } };
+    if (data.ok && data.result?.username) cachedUsername = data.result.username;
+  } catch (e) {
+    console.error("[telegram] getMe failed:", e);
+  }
+  return cachedUsername;
+}
+
 export async function sendTelegramMessage(chatId: string, text: string): Promise<boolean> {
   if (!telegramConfigured()) return false;
   try {
@@ -50,6 +65,7 @@ let offset = 0;
 export function startTelegramPolling(): void {
   if (!telegramConfigured() || polling) return;
   polling = true;
+  void ensureBotUsername(); // warm the cached @username
   console.log("[telegram] linking poller started");
   void pollLoop();
 }

@@ -5,8 +5,7 @@ import { z } from "zod";
 import { query } from "../db/index.ts";
 import { asyncHandler } from "../lib/async.ts";
 import type { SessionRequest } from "../lib/session.ts";
-import { env } from "../lib/env.ts";
-import { telegramConfigured } from "../services/telegram.ts";
+import { telegramConfigured, ensureBotUsername } from "../services/telegram.ts";
 
 export const telegramRouter = Router();
 
@@ -14,10 +13,6 @@ const walletSchema = z.string().regex(
   /^(paper_[a-zA-Z0-9]+|[1-9A-HJ-NP-Za-km-z]{32,44})$/,
   "invalid Solana address",
 );
-
-function configured(): boolean {
-  return telegramConfigured() && !!env.telegramBotUsername;
-}
 
 // POST /api/session/telegram/link-code — issue a one-time /start deep link
 telegramRouter.post(
@@ -29,7 +24,8 @@ telegramRouter.post(
       res.status(401).json({ error: "unauthorized", message: "valid wallet or session required" });
       return;
     }
-    if (!configured()) {
+    const username = await ensureBotUsername();
+    if (!telegramConfigured() || !username) {
       res.status(503).json({
         error: "telegram_not_configured",
         message: "Telegram receipts aren't enabled on this deployment yet.",
@@ -43,8 +39,8 @@ telegramRouter.post(
 
     res.json({
       code,
-      botUsername: env.telegramBotUsername,
-      deepLink: `https://t.me/${env.telegramBotUsername}?start=${code}`,
+      botUsername: username,
+      deepLink: `https://t.me/${username}?start=${code}`,
     });
   }),
 );
@@ -59,11 +55,15 @@ telegramRouter.get(
       res.status(400).json({ error: "valid ?wallet= or session required" });
       return;
     }
+    const username = await ensureBotUsername();
     const { rows } = await query<{ telegram_chat_id: string | null }>(
       `SELECT telegram_chat_id FROM users WHERE wallet = $1`,
       [w],
     );
-    res.json({ linked: !!rows[0]?.telegram_chat_id, configured: configured() });
+    res.json({
+      linked: !!rows[0]?.telegram_chat_id,
+      configured: telegramConfigured() && !!username,
+    });
   }),
 );
 

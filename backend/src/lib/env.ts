@@ -23,5 +23,9 @@ export const env = {
   usdcMintDevnet: process.env.USDC_MINT_DEVNET ?? "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
   // Telegram fill receipts (#10). Inert unless a bot token is configured.
   telegramBotToken: process.env.TELEGRAM_BOT_TOKEN ?? "",
+  // Optional — auto-detected from the token via getMe when blank.
   telegramBotUsername: process.env.TELEGRAM_BOT_USERNAME ?? "",
+  // Email fill receipts via Resend (#10). Inert unless a key is configured.
+  resendApiKey: process.env.RESEND_API_KEY ?? "",
+  resendFrom: process.env.RESEND_FROM ?? "Obscura <onboarding@resend.dev>",
 };
