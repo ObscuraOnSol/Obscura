@@ -28,7 +28,7 @@ import confetti from "canvas-confetti";
 import { FadeIn, StaggerContainer, StaggerItem } from "@/components/motion";
 import Link from "next/link";
 import { marketApi, providersApi, type ProviderRow } from "@/lib/api";
-import { fmtUsdHr, shortHash } from "@/lib/utils";
+import { cn, fmtUsdHr, shortHash } from "@/lib/utils";
 import { useWallet } from "@/lib/wallet";
 import { Button } from "@/components/ui/button";
 import { performUsdcTransfer, performUsdcSplitTransfer, signAndSendSerializedTransaction } from "@/lib/solana";
@@ -83,17 +83,7 @@ function getBrandLogo(brand: string, className = "h-3.5 w-3.5") {
   return <Cpu className={`${className} text-primary`} />;
 }
 
-interface Row {
-  id: string;
-  wallet: string;
-  gpuType: string;
-  capacity: number;
-  stakeAmount: number;
-  rateMicro: number;
-  successfulPings: number;
-  failedPings: number;
-  status: string;
-}
+interface Row extends ProviderRow {}
 
 export function MarketplaceLive() {
   const [activeTab, setActiveTab] = useState<"rent" | "provide">("rent");
@@ -217,8 +207,21 @@ export function MarketplaceLive() {
                                 </span>
                               )}
                             </div>
-                            <div className="text-[10px] text-muted-foreground font-mono mt-1">
-                              Operator: {shortHash(p.wallet, 5, 4)}
+                            <div className="text-[10px] text-muted-foreground font-mono mt-1 flex items-center gap-1.5 flex-wrap">
+                              <span>Operator: {shortHash(p.wallet, 5, 4)}</span>
+                              <span>•</span>
+                              <span className="flex items-center gap-1">
+                                <span className={cn(
+                                  "font-semibold",
+                                  p.reputation >= 90 
+                                    ? "text-emerald-400" 
+                                    : p.reputation >= 75 
+                                      ? "text-amber-400" 
+                                      : "text-rose-400"
+                                )}>
+                                  Reputation: {p.reputation}%
+                                </span>
+                              </span>
                             </div>
                           </div>
                           
@@ -241,23 +244,44 @@ export function MarketplaceLive() {
                           </div>
                         </div>
 
-                        {/* Uptime Bar */}
-                        <div className="mt-4 space-y-1">
-                          <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-                            <span>Node Uptime</span>
-                            <span className="font-semibold">{uptime.toFixed(1)}% ({p.successfulPings}/{totalPings} checks)</span>
+                        {/* Uptime and Fill Rate Bars */}
+                        <div className="mt-4 grid grid-cols-2 gap-4">
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                              <span>Node Uptime</span>
+                              <span className="font-semibold">{uptime.toFixed(1)}%</span>
+                            </div>
+                            <div className="h-1.5 w-full rounded-full bg-border/40 overflow-hidden">
+                              <div
+                                className={`h-full transition-all ${
+                                  uptime >= 90
+                                    ? "bg-emerald-500"
+                                    : uptime >= 75
+                                      ? "bg-amber-500"
+                                      : "bg-destructive"
+                                }`}
+                                style={{ width: `${uptime}%` }}
+                              />
+                            </div>
                           </div>
-                          <div className="h-1.5 w-full rounded-full bg-border/40 overflow-hidden">
-                            <div
-                              className={`h-full transition-all ${
-                                uptime >= 90
-                                  ? "bg-emerald-500"
-                                  : uptime >= 75
-                                    ? "bg-amber-500"
-                                    : "bg-destructive"
-                              }`}
-                              style={{ width: `${uptime}%` }}
-                            />
+
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                              <span>Match Fill Rate</span>
+                              <span className="font-semibold">{p.fillRate.toFixed(1)}%</span>
+                            </div>
+                            <div className="h-1.5 w-full rounded-full bg-border/40 overflow-hidden">
+                              <div
+                                className={`h-full transition-all ${
+                                  p.fillRate >= 90
+                                    ? "bg-emerald-500"
+                                    : p.fillRate >= 75
+                                      ? "bg-amber-500"
+                                      : "bg-destructive"
+                                }`}
+                                style={{ width: `${p.fillRate}%` }}
+                              />
+                            </div>
                           </div>
                         </div>
 
