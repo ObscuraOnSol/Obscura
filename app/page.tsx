@@ -186,7 +186,6 @@ function Hero({ isComingSoon, onLinkClick }: ComingSoonProps) {
                 className="cursor-pointer inline-flex items-center gap-1.5 rounded border border-primary/30 bg-primary/5 px-3.5 py-1 text-xs font-mono text-primary transition-colors hover:bg-primary/10 select-none"
                 title="Click to copy CA"
               >
-                <span className="h-1.5 w-1.5 rounded bg-primary" />
                 {copied ? "Copied!" : "CA: 63pWiBNCEW4RkYTDBG9dcabzdiHdVZMHnauKGhcWpump"}
               </div>
               <a 
@@ -690,7 +689,6 @@ function SiteFooter({ isComingSoon, onLinkClick }: ComingSoonProps) {
                 className="cursor-pointer inline-flex items-center gap-1.5 rounded border border-primary/30 bg-primary/5 px-2.5 py-0.5 text-xs font-mono text-primary transition-colors hover:bg-primary/10 select-none"
                 title="Click to copy CA"
               >
-                <span className="h-1.5 w-1.5 rounded bg-primary" />
                 {copied ? "Copied!" : "CA: 63pWiBNC...Wpump"}
               </span>
               <a 
