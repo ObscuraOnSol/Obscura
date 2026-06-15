@@ -36,7 +36,7 @@ Obscura uses a secure Commit-Reveal auction mechanism and an on-chain Escrow con
 - **Marketplace Discovery:** Do not hardcode GPU types (like "NVIDIA H100 80GB"). Always query GET /api/orders/metrics or GET /api/providers first to discover active, available hardware types (e.g. "H100", "A100", "RTX 4090", "L40S").
 - **USDC Token Account Requirement:** Your funding wallet must have an initialized USDC Token Account on Solana with sufficient balance. The transaction builder will fail with "insufficient funds" if this is missing.
 - **Price Unit Conversion (priceMicro):** Bid prices are specified in micro-USDC per hour (rate * 1e6). For example, a rate of 1.8 USDC/hour is specified as 1800000.
-- **Devnet vs Mainnet:** Ensure you are signing transactions on the target network (Solana Devnet for testing).
+- **Devnet vs Mainnet:** Ensure you are signing transactions on the target network. Always query GET /v1/api/network or GET /api/network to determine the network Obscura is currently running on (e.g. "devnet" or "mainnet-beta").
 - **Allocated/In-use Capacity:** If all providers for your selected GPU type are busy (capacity = 0), your order will remain in the "revealed" status until a node is released. Handle fallback GPU options in your logic.
 
 ### 3. Step-by-Step Order Lifecycle

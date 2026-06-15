@@ -62,6 +62,11 @@ export function createAppWithoutDocs() {
   app.get("/v1/agents/docs.json", (_req, res) => {
     res.json(swaggerSpec);
   });
+  app.get("/v1/api/network", (_req, res) => {
+    res.json({
+      network: env.network,
+    });
+  });
   app.use(healthRouter); // GET /health
 
   // All public + agent APIs live under /api.

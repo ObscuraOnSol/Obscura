@@ -27,6 +27,27 @@ export const swaggerSpec = {
         }
       }
     },
+    "/api/network": {
+      "get": {
+        "summary": "Get Active Network",
+        "description": "Returns the active Solana network Obscura is running on (e.g. devnet, mainnet-beta).",
+        "responses": {
+          "200": {
+            "description": "Returns the active network name",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "network": { "type": "string", "example": "devnet" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/orders": {
       "post": {
         "summary": "Commit Order",
